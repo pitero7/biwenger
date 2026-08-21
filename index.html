@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V16</title>
+<title>Cuaderno de mercado · Biwenger V18</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel">J1</span><span class="ver">V16</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel">J1</span><span class="ver">V18</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -1237,6 +1237,27 @@ function quitarDeTodos(nombre){
   return n;
 }
 
+/* ¿Este jugador está en mi plantilla ahora mismo? */
+function eraMio(nombre){
+  return D.plantilla.some(function(p){return normalizar(p.nombre)===normalizar(nombre);});
+}
+/* Lo saca de mi plantilla; si fue venta, lo registra en Movimientos y suma el dinero */
+function sacarDeMiPlantilla(nombre,precio,esVenta){
+  var j=D.plantilla.find(function(p){return normalizar(p.nombre)===normalizar(nombre);});
+  if(!j)return false;
+  if(esVenta){
+    var yaEsta=D.movimientos.some(function(m){
+      return normalizar(m.nombre)===normalizar(nombre)&&m.f===hoy()&&m.venta===precio;
+    });
+    if(!yaEsta){
+      D.movimientos.unshift({id:id(),f:hoy(),nombre:j.nombre,compra:j.compra,
+                             venta:precio,benef:precio-j.compra});
+      D.saldo+=precio;
+    }
+  }
+  D.plantilla=D.plantilla.filter(function(p){return normalizar(p.nombre)!==normalizar(nombre);});
+  return true;
+}
 function importarActividad(){
   var txt=document.getElementById('actTexto').value;
   var out=document.getElementById('actResultado');
@@ -1252,33 +1273,61 @@ function importarActividad(){
      para que el último movimiento de cada jugador sea el que manda. */
   entradas.reverse();
 
-  var altas=0,bajas=0,posAprendidas=0,propios=0,detalle=[];
+  var altas=0,bajas=0,posAprendidas=0,propios=0,misCompras=0,misVentas=0,detalle=[];
   entradas.forEach(function(e){
     if(e.pos.length>1){recordarPos(e.nombre,e.pos[0],e.pos[1]);posAprendidas++;}
     var antes=duenoActual(e.nombre);
 
+    /* ¿Está en MI plantilla? Entonces los movimientos me afectan a mí */
+    var esMio=eraMio(e.nombre);
+    var mioAqui=(mio&&e.equipo&&normalizar(e.equipo)===mio);
+
     if(e.tipo==='fuera'){
+      if(esMio)sacarDeMiPlantilla(e.nombre,0,false);
       if(quitarDeTodos(e.nombre))bajas++;
-      detalle.push({t:'fuera',n:e.nombre,de:antes,a:null,p:0});
+      detalle.push({t:'fuera',n:e.nombre,de:antes||(esMio?'tu equipo':null),a:null,p:0,mio:esMio});
       return;
     }
     if(e.tipo==='venta'){
+      if(esMio&&(mioAqui||!e.equipo)){
+        /* Vendido por mí: registra el movimiento y suma el dinero */
+        sacarDeMiPlantilla(e.nombre,e.precio,true);
+        misVentas++;
+        detalle.push({t:'venta',n:e.nombre,de:'tu equipo',a:null,p:e.precio,mio:true});
+        return;
+      }
       if(quitarDeTodos(e.nombre))bajas++;
       detalle.push({t:'venta',n:e.nombre,de:e.equipo||antes,a:null,p:e.precio});
       return;
     }
     if(e.tipo!=='compra'||!e.equipo)return;
     quitarDeTodos(e.nombre);
-    if(mio&&normalizar(e.equipo)===mio){
+    if(mioAqui){
       propios++;
+      if(!esMio){
+        var g2=posGuardada(e.nombre);
+        var reg2=(D.jugadores||{})[normalizar(e.nombre)];
+        D.plantilla.push({id:id(),nombre:e.nombre,
+          pos:g2?g2.pos:(e.pos[0]||'MED'),pos2:g2?g2.pos2:(e.pos[1]||''),
+          equipo:reg2?reg2.equipo:'',
+          compra:e.precio,valor:e.precio,puntos:reg2?reg2.puntos:0,
+          hist:[{f:hoy(),v:e.precio}],dhist:[]});
+        D.saldo-=e.precio;
+        misCompras++;
+      }
       detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,de:antes,a:e.equipo,p:e.precio,mio:true});
       return;
     }
     var r=D.rivales.find(function(x){return normalizar(x.nombre)===normalizar(e.equipo);});
     if(!r){r={id:id(),nombre:e.equipo,jugadores:[],f:hoy()};D.rivales.push(r);}
     var g=posGuardada(e.nombre);
-    r.jugadores.push({nombre:e.nombre,valor:e.precio,pagado:e.precio,dias:null,
-      pos:g?g.pos:(e.pos[0]||''),pos2:g?g.pos2:(e.pos[1]||''),desde:hoy()});
+    /* Si ya conocíamos al jugador, hereda sus puntos y su equipo real */
+    var reg=(D.jugadores||{})[normalizar(e.nombre)];
+    r.jugadores.push({nombre:e.nombre,valor:reg&&reg.valor?reg.valor:e.precio,
+      pagado:e.precio,dias:null,puntos:reg?reg.puntos:0,
+      pos:g?g.pos:(reg&&reg.pos?reg.pos:(e.pos[0]||'')),
+      pos2:g?g.pos2:(reg&&reg.pos2?reg.pos2:(e.pos[1]||'')),
+      desde:hoy()});
     altas++;
     detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,de:antes,a:e.equipo,p:e.precio});
   });
@@ -1291,7 +1340,8 @@ function importarActividad(){
   out.innerHTML='<div class="card" style="margin-top:12px"><div class="row1"><div class="who">'+
     '<b>'+altas+' altas · '+bajas+' salidas</b><small>'+
     entradas.length+' movimientos leídos · '+posAprendidas+' multiposiciones'+
-    (propios?' · '+propios+' tuyos':'')+'</small></div></div></div>'+
+    (misCompras?' · '+misCompras+' fichajes tuyos añadidos':'')+
+    (misVentas?' · '+misVentas+' ventas tuyas registradas':'')+'</small></div></div></div>'+
     '<p class="hint" style="margin-top:12px">Revisa abajo que lo haya interpretado bien.</p>';
 }
 
@@ -1503,7 +1553,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V16 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V18 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   L.push('Plusvalía latente '+signo(plus)+' | Beneficio realizado en ventas '+signo(benef));
   L.push('');
