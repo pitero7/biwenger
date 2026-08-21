@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V21</title>
+<title>Cuaderno de mercado · Biwenger V23</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel">J1</span><span class="ver">V21</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel">J1</span><span class="ver">V23</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -914,7 +914,10 @@ function pintarMercado(){
 /* ============ Registro global de jugadores ============
    Un único sitio donde vive cada jugador que ha pasado por la app. Todas las
    importaciones lo alimentan; el dueño y el valor se recalculan solos. */
-function registrar(nombre,datos){
+/* Con semilla=true solo se rellenan los huecos: sirve para que una plantilla
+   dé de alta a un jugador que el registro aún no conoce, sin pisar los datos
+   buenos que vengan del CSV de LaLiga. */
+function registrar(nombre,datos,semilla){
   if(!nombre)return null;
   D.jugadores=D.jugadores||{};
   var k=normalizar(nombre);
@@ -922,12 +925,13 @@ function registrar(nombre,datos){
   var j=D.jugadores[k];
   if(!j){j={nombre:nombre,pos:'',pos2:'',valor:0,pagado:0,puntos:0,
             duenoTipo:'libre',dueno:'',equipo:'',visto:hoy()};D.jugadores[k]=j;}
-  if(datos.valor)j.valor=datos.valor;
+  if(datos.valor&&(!semilla||!j.valor))j.valor=datos.valor;
   if(datos.pagado!==undefined)j.pagado=datos.pagado;
   /* Los puntos se guardan siempre: el 0 y los negativos son información */
-  if(datos.puntos!==undefined&&datos.puntos!==null&&datos.puntos!=='')j.puntos=datos.puntos;
+  if(datos.puntos!==undefined&&datos.puntos!==null&&datos.puntos!==''&&(!semilla||!j.puntos))j.puntos=datos.puntos;
   if(datos.equipo)j.equipo=datos.equipo;
   if(datos.media!==undefined)j.media=datos.media;
+  if(datos.deposito!==undefined&&(!semilla||!j.deposito))j.deposito=datos.deposito;
   if(datos.pj!==undefined)j.pj=datos.pj;
   if(datos.duenoTipo){j.duenoTipo=datos.duenoTipo;j.dueno=datos.dueno||'';}
   /* El diccionario de posiciones manda siempre */
@@ -959,29 +963,49 @@ function clausulaJugador(j){
   return Math.round((Math.max(j.valor||0,j.pagado||0)+(j.deposito||0))*FACTOR);
 }
 /* Recalcula dueños a partir de mi plantilla y de las plantillas rivales */
+/* Baja a cada plantilla lo que manda el registro. Los atributos del jugador
+   (valor, puntos, posiciones, blindaje) viven en un único sitio; las plantillas
+   solo guardan lo suyo: quién lo tiene y cuánto pagó. */
+function bajarDelRegistro(){
+  D.jugadores=D.jugadores||{};
+  function aplicar(p){
+    var j=D.jugadores[normalizar(p.nombre)];
+    if(!j)return;
+    if(j.valor)p.valor=j.valor;
+    p.puntos=j.puntos||0;
+    if(j.pos)p.pos=j.pos;
+    p.pos2=j.pos2||'';
+    p.deposito=j.deposito||0;
+    if(j.equipo)p.equipo=j.equipo;
+  }
+  D.plantilla.forEach(aplicar);
+  (D.rivales||[]).forEach(function(r){r.jugadores.forEach(aplicar);});
+  (D.mercado||[]).forEach(aplicar);
+}
 function sincronizarJugadores(){
   D.jugadores=D.jugadores||{};
+  /* Solo se recalcula la propiedad. Nunca se borran atributos del jugador. */
   Object.keys(D.jugadores).forEach(function(k){
     var j=D.jugadores[k];
-    j.duenoTipo='libre';j.dueno='';j.pagado=0;j.deposito=0;
+    j.duenoTipo='libre';j.dueno='';j.pagado=0;
   });
   D.plantilla.forEach(function(p){
-    registrar(p.nombre,{valor:p.valor,pagado:p.compra,puntos:p.puntos,equipo:p.equipo,
-      pos:p.pos,pos2:p.pos2,duenoTipo:'mio',dueno:D.miEquipo||'Mi equipo'});
+    registrar(p.nombre,{pagado:p.compra,duenoTipo:'mio',dueno:D.miEquipo||'Mi equipo',
+      valor:p.valor,puntos:p.puntos,pos:p.pos,pos2:p.pos2,equipo:p.equipo,
+      deposito:p.deposito},true);
   });
   (D.rivales||[]).forEach(function(r){
     r.jugadores.forEach(function(p){
-      registrar(p.nombre,{valor:p.valor,pagado:p.pagado,puntos:p.puntos,
-        pos:p.pos,pos2:p.pos2,duenoTipo:'rival',dueno:r.nombre});
+      registrar(p.nombre,{pagado:p.pagado,duenoTipo:'rival',dueno:r.nombre,
+        valor:p.valor,puntos:p.puntos,pos:p.pos,pos2:p.pos2,deposito:p.deposito},true);
     });
   });
   (D.mercado||[]).forEach(function(m){
     var k=normalizar(m.nombre);
     var j=D.jugadores[k];
     if(!j||j.duenoTipo==='libre')
-      registrar(m.nombre,{valor:m.valor,puntos:m.puntos,pos:m.pos,pos2:m.pos2,equipo:m.equipo,
-        duenoTipo:m.propietario?'rival':'mercado',dueno:m.propietario||''});
-    else registrar(m.nombre,{valor:m.valor,puntos:m.puntos});
+      registrar(m.nombre,{duenoTipo:m.propietario?'rival':'mercado',dueno:m.propietario||'',
+        valor:m.valor,puntos:m.puntos,pos:m.pos,pos2:m.pos2,equipo:m.equipo},true);
   });
 }
 /* Cambiar posiciones aquí las cambia en todas partes y para siempre */
@@ -1228,6 +1252,9 @@ function duenoActual(nombre){
   return res;
 }
 function quitarDeTodos(nombre){
+  /* Al cambiar de manos, el blindaje del dueño anterior desaparece */
+  var reg=(D.jugadores||{})[normalizar(nombre)];
+  if(reg)reg.deposito=0;
   var n=0;
   (D.rivales||[]).forEach(function(r){
     var antes=r.jugadores.length;
@@ -1297,11 +1324,15 @@ function importarActividad(){
       D.eventos=D.eventos||{};
       var repetido=!!D.eventos[clave];
       if(obj&&!repetido){
+        var regD=registrar(e.nombre,{});
         var baseSD=Math.max(obj.valor||0,obj.pagado||obj.compra||0);
-        if(e.deposito) obj.deposito=(obj.deposito||0)+e.deposito;
-        else if(e.nuevaClausula) obj.deposito=Math.max(0,Math.round(e.nuevaClausula/FACTOR)-baseSD);
-        var regD=(D.jugadores||{})[normalizar(e.nombre)];
-        if(regD)regD.deposito=obj.deposito;
+        var nuevoDep;
+        if(e.deposito) nuevoDep=((regD&&regD.deposito)||0)+e.deposito;
+        else if(e.nuevaClausula) nuevoDep=Math.max(0,Math.round(e.nuevaClausula/FACTOR)-baseSD);
+        if(nuevoDep!==undefined){
+          if(regD)regD.deposito=nuevoDep;
+          obj.deposito=nuevoDep;
+        }
         D.eventos[clave]=hoy();
         blindajes++;
       }
@@ -1514,7 +1545,7 @@ function editarClausula(rid,nombre){
     var dep=Math.round(cl/FACTOR)-base;
     j.deposito=Math.max(0,dep);
   }
-  var reg=(D.jugadores||{})[normalizar(j.nombre)];
+  var reg=registrar(j.nombre,{});
   if(reg)reg.deposito=j.deposito;
   guardar();pintar();
   aviso(j.deposito?'Blindado con '+eur(j.deposito):'Blindaje quitado');
@@ -1608,7 +1639,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V21 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V23 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   L.push('Plusvalía latente '+signo(plus)+' | Beneficio realizado en ventas '+signo(benef));
   L.push('');
@@ -1742,6 +1773,7 @@ function pintar(){
   document.getElementById('miEquipo').value=D.miEquipo||'';
   pintarFuentes();
   sincronizarJugadores();
+  bajarDelRegistro();
   pintarPlantilla();pintarCambios();pintarLiga();pintarMovLiga();pintarJugadores();pintarMercado();pintarMovs();pintarNotas();
 }
 
