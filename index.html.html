@@ -1,0 +1,1684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B1220">
+<title>Cuaderno de mercado · Biwenger V16</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0B1220;
+  --panel:#141E30;
+  --panel-2:#1C293E;
+  --line:#2A3purple;
+  --line:#26344B;
+  --text:#E8EDF5;
+  --muted:#8A9BB5;
+  --gold:#F2B441;
+  --up:#3FBF7F;
+  --down:#E8556D;
+  --radius:14px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:'Archivo',system-ui,-apple-system,sans-serif;
+  font-size:15px;line-height:1.45;
+  padding-bottom:90px;
+  -webkit-font-smoothing:antialiased;
+}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)} .muted{color:var(--muted)}
+
+/* ---------- Cabecera de caja ---------- */
+header{
+  position:sticky;top:0;z-index:40;
+  background:linear-gradient(180deg,#0B1220 70%,rgba(11,18,32,0));
+  padding:14px 16px 10px;
+}
+.brand{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.brand h1{font-size:15px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;margin:0}
+.brand span{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold)}
+.fuentes{display:flex;gap:6px;padding:0 16px;margin-top:8px}
+.fte{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:7px 6px;text-align:center;line-height:1.2}
+.fte b{display:block;font-size:9.5px;letter-spacing:.03em;text-transform:uppercase;font-weight:700;
+  margin-bottom:2px;hyphens:auto}
+.fte small{font-size:9.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace}
+.fte.ok{border-color:#1F4433}
+.fte.ok b{color:var(--up)}
+.fte.pend{border-color:#4A3B18;background:rgba(242,180,65,.05)}
+.fte.pend b{color:var(--gold)}
+.fte.vivo{border-color:#3A2A4A}
+.brand .ver{margin-left:auto;font-size:10px;letter-spacing:.14em;color:var(--muted);
+  border:1px solid var(--line);border-radius:5px;padding:2px 6px}
+.till{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  overflow:hidden;
+}
+.till div{padding:10px 12px;border-right:1px solid var(--line)}
+.till div:last-child{border-right:none}
+.till label{display:block;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.till b{font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;display:block;line-height:1.1}
+.till input{
+  width:100%;background:none;border:none;color:var(--gold);
+  font-family:'IBM Plex Mono',monospace;font-size:17px;font-weight:600;padding:0;
+}
+.till input:focus{outline:none;color:#fff}
+
+/* ---------- Navegación ---------- */
+nav{display:flex;gap:6px;overflow-x:auto;padding:12px 16px 4px;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{
+  flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--muted);
+  font-family:inherit;font-size:12px;font-weight:600;letter-spacing:.05em;
+  padding:8px 14px;border-radius:999px;cursor:pointer;transition:.15s;
+}
+nav button[aria-selected="true"]{background:var(--gold);border-color:var(--gold);color:#0B1220}
+
+main{padding:8px 16px}
+section[hidden]{display:none}
+.hint{font-size:12.5px;color:var(--muted);margin:4px 0 14px}
+
+/* ---------- Tarjeta de jugador ---------- */
+.card{
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px 14px;margin-bottom:8px;
+}
+.row1{display:flex;align-items:center;gap:10px}
+.pos{
+  flex:0 0 auto;min-width:30px;height:30px;border-radius:8px;padding:0 7px;
+  display:inline-flex;align-items:center;justify-content:center;gap:1px;
+  font-size:10px;font-weight:800;letter-spacing:.04em;white-space:nowrap;
+  background:var(--panel-2);color:var(--muted);border:1px solid var(--line);
+}
+.pos .sep{color:var(--muted);opacity:.5;font-weight:500;margin:0 1px}
+.p-POR{color:#F2B441} .p-DEF{color:#6FA8FF} .p-MED{color:#3FBF7F} .p-DEL{color:#E8556D}
+.who{flex:1;min-width:0}
+.who b{display:block;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.who small{font-size:11px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.delta{text-align:right;font-family:'IBM Plex Mono',monospace}
+.delta b{display:block;font-size:14px;font-weight:600}
+.delta small{font-size:11px}
+.row2{
+  display:flex;gap:14px;margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);
+  font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--muted);flex-wrap:wrap;
+}
+.row2 s{text-decoration:none;color:var(--text)}
+.acts{display:flex;gap:6px;margin-left:auto}
+.acts button{
+  background:none;border:1px solid var(--line);color:var(--muted);
+  font-family:inherit;font-size:10.5px;padding:3px 9px;border-radius:7px;cursor:pointer;
+}
+.acts button:hover{border-color:var(--gold);color:var(--gold)}
+
+/* ---------- Formularios y botones ---------- */
+.field{margin-bottom:10px}
+.field label{display:block;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+input,select,textarea{
+  width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+  color:var(--text);font-family:'IBM Plex Mono',monospace;font-size:14px;padding:10px 12px;
+}
+textarea{font-size:12.5px;line-height:1.5;resize:vertical}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+select{font-family:'Archivo',sans-serif}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{
+  width:100%;background:var(--gold);border:none;border-radius:11px;color:#0B1220;
+  font-family:inherit;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  padding:13px;cursor:pointer;margin-top:4px;
+}
+.btn.ghost{background:none;border:1px solid var(--line);color:var(--text)}
+.btn:active{transform:scale(.99)}
+details{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px;margin-bottom:14px}
+details summary{cursor:pointer;font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--gold);list-style:none}
+details summary::-webkit-details-marker{display:none}
+details summary::before{content:'+ ';font-family:monospace}
+details[open] summary::before{content:'– '}
+details > *:first-child + *{margin-top:12px}
+
+.drop{
+  border:1.5px dashed var(--line);border-radius:var(--radius);
+  padding:22px 16px;text-align:center;margin-bottom:12px;cursor:pointer;transition:.15s;
+}
+.drop.over{border-color:var(--gold);background:rgba(242,180,65,.06)}
+.drop b{display:block;font-size:13.5px;margin-bottom:3px}
+.drop span{font-size:12px;color:var(--muted)}
+.drop u{color:var(--gold);cursor:pointer}
+.chg{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--panel);
+  border:1px solid var(--line);border-radius:11px;margin-bottom:6px}
+.chg .who{flex:1;min-width:0}
+.chg .who b{font-size:13.5px}
+.chg input{width:88px;text-align:right;padding:7px 9px;font-size:13.5px}
+.chg .racha{font-family:'IBM Plex Mono',monospace;font-size:10.5px;min-width:52px;text-align:right}
+.preview{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);
+  background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+  padding:10px;margin-top:10px;overflow-x:auto;white-space:pre}
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:34px 20px;border:1px dashed var(--line);border-radius:var(--radius)}
+.tag{display:inline-block;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:5px;background:var(--panel-2);border:1px solid var(--line);color:var(--muted)}
+.tag.watch{color:var(--gold);border-color:#4A3B18}
+.tag.bid{color:var(--up);border-color:#1F4433}
+.tag.out{opacity:.45}
+
+/* ---------- Barra de informe ---------- */
+.dock{
+  position:fixed;left:0;right:0;bottom:0;z-index:50;
+  background:rgba(11,18,32,.94);backdrop-filter:blur(12px);
+  border-top:1px solid var(--line);padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+}
+.toast{
+  position:fixed;left:50%;bottom:96px;transform:translate(-50%,14px);
+  background:var(--gold);color:#0B1220;font-size:12.5px;font-weight:700;
+  padding:10px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:.25s;z-index:60;
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel">J1</span><span class="ver">V16</span></div>
+  <div class="till">
+    <div>
+      <label>Saldo</label>
+      <input id="saldo" class="mono" type="text" inputmode="decimal" placeholder="0" title="Puedes escribirlo corto: -6,4 son -6,4M">
+    </div>
+    <div>
+      <label>Valor equipo</label>
+      <b id="valEquipo">—</b>
+    </div>
+    <div>
+      <label>Plusvalía</label>
+      <b id="plusTotal">—</b>
+    </div>
+  </div>
+</header>
+
+<div id="fuentes"></div>
+
+<nav role="tablist">
+  <button role="tab" aria-selected="true" data-tab="tablon">Tablón</button>
+  <button role="tab" aria-selected="false" data-tab="liga">Liga</button>
+  <button role="tab" aria-selected="false" data-tab="jugadores">Jugadores</button>
+  <button role="tab" aria-selected="false" data-tab="plantilla">Mi plantilla</button>
+  <button role="tab" aria-selected="false" data-tab="cambios">Cambios de hoy</button>
+  <button role="tab" aria-selected="false" data-tab="mercado">Mercado de fichajes</button>
+  <button role="tab" aria-selected="false" data-tab="movs">Movimientos</button>
+  <button role="tab" aria-selected="false" data-tab="importar">Importar CSV</button>
+  <button role="tab" aria-selected="false" data-tab="notas">Notas</button>
+  <button role="tab" aria-selected="false" data-tab="ajustes">Copia</button>
+</nav>
+
+<main>
+
+<!-- PLANTILLA -->
+<section id="tab-plantilla" hidden>
+  <p class="hint">El precio de compra se guarda una vez y no se toca más. Lo tienes en Biwenger, en Actividad.</p>
+  <details>
+    <summary>Fichar jugador a mano</summary>
+    <div class="field"><label>Nombre</label><input id="nNombre" placeholder="Vinicius"></div>
+    <div class="grid2">
+      <div class="field"><label>Posición</label>
+        <select id="nPos"><option value="POR">PT</option><option value="DEF">DF</option><option value="MED" selected>MC</option><option value="DEL">DL</option></select>
+      </div>
+      <div class="field"><label>Equipo</label><input id="nEquipo" placeholder="RMA"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Precio de compra</label><input id="nCompra" inputmode="numeric" placeholder="28500000"></div>
+      <div class="field"><label>Valor hoy</label><input id="nValor" inputmode="numeric" placeholder="31200000"></div>
+    </div>
+    <button class="btn" onclick="addJugador()">Añadir a la plantilla</button>
+  </details>
+  <div id="listaPlantilla"></div>
+</section>
+
+<!-- IMPORTAR -->
+<section id="tab-importar" hidden>
+  <p class="hint">Pega el CSV que descargas de Biwenger. Detecta las columnas solo. Los jugadores que ya tengas se actualizan; los nuevos entran con el precio de compra igual al valor de hoy y lo corriges si hace falta.</p>
+  <div class="field">
+    <label>Destino</label>
+    <select id="csvDestino">
+      <option value="plantilla">CSV de mi plantilla</option>
+      <option value="mercado">CSV del mercado de hoy (sustituye la lista)</option>
+      <option value="liga">CSV de toda LaLiga (actualiza valores y puntos de todos)</option>
+    </select>
+  </div>
+  <div class="drop" id="drop">
+    <input type="file" id="csvFile" accept=".csv,.txt,.tsv" hidden>
+    <b>Suelta aquí el archivo CSV</b>
+    <span>o <u onclick="document.getElementById('csvFile').click()">búscalo en tu equipo</u></span>
+  </div>
+  <div class="field">
+    <label>O pega el contenido a mano</label>
+    <textarea id="csvTexto" rows="8" placeholder="Nombre;Posición;Equipo;Valor;Puntos&#10;Vinicius;DEL;Real Madrid;31200000;18"></textarea>
+  </div>
+  <button class="btn" onclick="importarCSV()">Revisar e importar</button>
+  <div id="csvResultado" style="margin-top:14px"></div>
+</section>
+
+<!-- CAMBIOS -->
+<section id="tab-cambios" hidden>
+  <p class="hint">Respaldo manual. Desde que importas el CSV de toda LaLiga, los cambios y las rachas se calculan solos: usa esta pantalla solo para corregir algo puntual. Escríbelo corto: <b>110</b> son +110K, <b>-1,2</b> son -1,2M.</p>
+  <div id="listaCambios"></div>
+  <button class="btn ghost" onclick="cerrarDia()">Guardar cambios del día</button>
+</section>
+
+<!-- MERCADO DE FICHAJES -->
+<section id="tab-mercado" hidden>
+  <div id="cierreMercado"></div>
+  <p class="hint">El mercado de hoy. Cada vez que importas el CSV de mercado, esta lista se sustituye entera por la nueva. Se conservan tus notas y precios objetivo de los jugadores que repitan.</p>
+  <div id="listaMercado"></div>
+  <details style="margin-top:14px">
+    <summary>Pegar el mercado en bruto</summary>
+    <p class="hint">Alternativa al CSV. Copia el mercado del navegador y pégalo tal cual: deduce si cada jugador sube o baja comparando con el valor que ya teníamos.</p>
+    <div class="field">
+      <textarea id="mkTexto" rows="8" placeholder="Pega aquí el mercado copiado de Biwenger"></textarea>
+    </div>
+    <button class="btn" onclick="importarMercadoBruto()">Procesar mercado</button>
+    <div id="mkResultado"></div>
+  </details>
+
+  <details style="margin-top:10px">
+    <summary>Añadir un jugador a mano</summary>
+    <div class="field"><label>Jugador</label><input id="mNombre" placeholder="Baena"></div>
+    <div class="grid2">
+      <div class="field"><label>Valor actual</label><input id="mValor" inputmode="decimal" placeholder="12,8"></div>
+      <div class="field"><label>Lo quiero por</label><input id="mObjetivo" inputmode="decimal" placeholder="11"></div>
+    </div>
+    <div class="field"><label>Nota</label><input id="mNota" placeholder="Calendario suave hasta la J8"></div>
+    <button class="btn" onclick="addObjetivo()">Añadir</button>
+  </details>
+</section>
+
+<!-- TABLÓN -->
+<section id="tab-tablon">
+  <div class="field">
+    <label>Cómo se llama tu equipo en Biwenger</label>
+    <input id="miEquipo" placeholder="Varsenal FC">
+  </div>
+  <p class="hint">Solo el nombre, tal cual sale en el tablón. Sirve para que tus propios fichajes no se registren como si fueran de un rival.</p>
+  <div class="field">
+    <label>Tablón copiado de Biwenger</label>
+    <textarea id="actTexto" rows="10" placeholder="Selecciona el tablón entero en el navegador, cópialo y pégalo aquí tal cual, sin limpiarlo"></textarea>
+  </div>
+  <button class="btn" onclick="importarActividad()">Procesar tablón</button>
+  <div id="actResultado"></div>
+  <div id="listaMovLiga"></div>
+</section>
+
+<!-- LIGA -->
+<section id="tab-liga" hidden>
+  <div id="resumenLiga"></div>
+  <div id="listaRivales"></div>
+  <details style="margin-top:14px">
+    <summary>Cargar plantilla completa de un rival</summary>
+    <p class="hint">Copia la plantilla del rival en bruto desde Biwenger y pégala tal cual: lee nombre, posiciones, valor, puntos y lo que pagó. Sirve para el reparto inicial que el tablón no cubre.</p>
+    <div class="field"><label>Nombre del equipo</label><input id="rNombre" placeholder="Massimo Gutti F.C."></div>
+    <div class="field">
+      <label>Si pegas una lista simple, ¿qué es el segundo número?</label>
+      <select id="rSegundo">
+        <option value="pagado">Lo que pagó por él</option>
+        <option value="clausula">Su cláusula actual</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Jugadores (uno por línea)</label>
+      <textarea id="rTexto" rows="9" placeholder="Pega aquí la plantilla del rival copiada de Biwenger, sin limpiarla"></textarea>
+    </div>
+    <button class="btn" onclick="importarRival()">Guardar plantilla del rival</button>
+    <div id="rResultado"></div>
+  </details>
+</section>
+
+<!-- JUGADORES -->
+<section id="tab-jugadores" hidden>
+  <p class="hint">Todos los jugadores que han pasado por la app. Valor, dueño y cláusula se actualizan solos con cada tablón, cada mercado y cada CSV. Lo único que se edita aquí son las posiciones.</p>
+  <div class="field">
+    <input id="jBuscar" type="search" placeholder="Buscar jugador o equipo" oninput="pintarJugadores()">
+  </div>
+  <div class="field">
+    <label>Mostrar</label>
+    <select id="jFiltro" onchange="pintarJugadores()">
+      <option value="todos">Todos</option>
+      <option value="sinpos">Sin posición asignada</option>
+      <option value="mios">De mi plantilla</option>
+      <option value="rivales">De rivales</option>
+      <option value="libres">Libres o en el mercado</option>
+    </select>
+  </div>
+  <div id="resumenJugadores"></div>
+  <div id="listaJugadores"></div>
+</section>
+
+<!-- MOVIMIENTOS -->
+<section id="tab-movs" hidden>
+  <p class="hint">Cada venta queda registrada con su beneficio real. Es el histórico que demuestra si el mercado te está saliendo bien.</p>
+  <div id="resumenMovs"></div>
+  <div id="listaMovs"></div>
+</section>
+
+<!-- NOTAS -->
+<section id="tab-notas" hidden>
+  <p class="hint">Pega aquí lo que te recomiendo cada semana, para tenerlo delante el día de la alineación.</p>
+  <div class="field">
+    <label>Jornada</label><input id="notaJor" inputmode="numeric" placeholder="3">
+  </div>
+  <div class="field">
+    <label>Recomendaciones</label>
+    <textarea id="notaTexto" rows="6" placeholder="Vender a Sorloth antes del sábado. Pujar por Baena si baja de 11M."></textarea>
+  </div>
+  <button class="btn" onclick="addNota()">Guardar nota</button>
+  <div id="listaNotas" style="margin-top:16px"></div>
+</section>
+
+<!-- AJUSTES -->
+<section id="tab-ajustes" hidden>
+  <p class="hint">Todo se guarda en este dispositivo. Descarga una copia de vez en cuando para no perder la temporada.</p>
+  <div class="field"><label>Jornada actual</label><input id="jornadaInput" inputmode="numeric" placeholder="1"></div>
+  <button class="btn ghost" onclick="descargarCopia()">Descargar copia de seguridad</button>
+  <div style="height:10px"></div>
+  <div class="field">
+    <label>Restaurar desde una copia</label>
+    <textarea id="restaurarTexto" rows="4" placeholder="Pega aquí el contenido del archivo de copia"></textarea>
+  </div>
+  <button class="btn ghost" onclick="restaurarCopia()">Restaurar</button>
+  <div style="height:10px"></div>
+  <button class="btn ghost" style="color:var(--down)" onclick="borrarTodo()">Borrar toda la temporada</button>
+</section>
+
+</main>
+
+<div class="dock">
+  <button class="btn" onclick="copiarInforme()">Copiar informe para el analista</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============ Almacén ============ */
+var KEY='biwenger-cuaderno-v1';
+var D={saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}};
+var memoria=null;
+
+function guardar(){
+  try{localStorage.setItem(KEY,JSON.stringify(D));}
+  catch(e){memoria=JSON.stringify(D);}
+}
+function cargar(){
+  try{
+    var s=localStorage.getItem(KEY)||memoria;
+    if(s) D=Object.assign(D,JSON.parse(s));
+  }catch(e){}
+}
+
+/* ============ Utilidades ============ */
+function num(v){
+  if(v===null||v===undefined)return 0;
+  var s=String(v).trim().replace(/[€\s]/g,'');
+  if(!s)return 0;
+  var neg=/^-/.test(s)||/^\(.*\)$/.test(s);
+  var mult=1;
+  if(/m$/i.test(s)){mult=1e6;s=s.slice(0,-1);}
+  else if(/k$/i.test(s)){mult=1e3;s=s.slice(0,-1);}
+  s=s.replace(/[^\d.,]/g,'');
+  /* Con los dos signos, el último es el decimal: 1.234,56 y 1,234.56 */
+  var ic=s.lastIndexOf(','),ip=s.lastIndexOf('.');
+  if(ic>-1&&ip>-1){
+    if(ic>ip) s=s.replace(/\./g,'').replace(',','.');
+    else s=s.replace(/,/g,'');
+  }else if(ic>-1){
+    /* Una sola coma: decimal si deja 1 o 2 cifras detrás, si no es de miles */
+    s=(s.length-ic-1<=2)?s.replace(',','.'):s.replace(/,/g,'');
+  }else if(ip>-1){
+    /* Varios puntos son siempre separadores de miles: 6.333.330 */
+    if((s.match(/\./g)||[]).length>1) s=s.replace(/\./g,'');
+    else if(s.length-ip-1===3&&/^\d{1,3}\.\d{3}$/.test(s)) s=s.replace(/\./g,'');
+  }
+  var n=parseFloat(s);
+  if(isNaN(n))return 0;
+  n*=mult;
+  /* Escritura corta: "-6,4" son 6,4 millones, no 6 euros */
+  if(mult===1&&Math.abs(n)>0&&Math.abs(n)<1000) n*=1e6;
+  return Math.round(neg&&n>0?-n:n);
+}
+function eur(n){
+  if(n===null||n===undefined||isNaN(n))return '—';
+  var s=n<0?'-':'';n=Math.abs(n);
+  if(n>=1e6)return s+(n/1e6).toFixed(2).replace(/0$/,'').replace(/[.,]$/,'').replace('.',',')+'M';
+  if(n>=1e3)return s+(n/1e3).toFixed(0)+'K';
+  return s+n;
+}
+function signo(n){return (n>0?'+':'')+eur(n);}
+function pct(a,b){return b?Math.round((a/b)*100):0;}
+function id(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
+function hoy(){return new Date().toISOString().slice(0,10);}
+function esc(s){return String(s==null?'':s).replace(/[<>&"]/g,function(c){return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c];});}
+function aviso(t){var e=document.getElementById('toast');e.textContent=t;e.classList.add('show');setTimeout(function(){e.classList.remove('show')},2000);}
+
+/* ============ Pestañas ============ */
+document.querySelectorAll('nav button').forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll('nav button').forEach(function(x){x.setAttribute('aria-selected','false')});
+    b.setAttribute('aria-selected','true');
+    document.querySelectorAll('main section').forEach(function(s){s.hidden=true});
+    document.getElementById('tab-'+b.dataset.tab).hidden=false;
+    window.scrollTo(0,0);
+  };
+});
+
+/* ============ Plantilla ============ */
+function addJugador(){
+  var n=document.getElementById('nNombre').value.trim();
+  if(!n){aviso('Falta el nombre');return;}
+  var valor=num(document.getElementById('nValor').value);
+  var compra=num(document.getElementById('nCompra').value)||valor;
+  D.plantilla.push({
+    id:id(),nombre:n,pos:document.getElementById('nPos').value,
+    equipo:document.getElementById('nEquipo').value.trim().toUpperCase(),
+    compra:compra,valor:valor,puntos:0,
+    hist:[{f:hoy(),v:valor}]
+  });
+  ['nNombre','nEquipo','nCompra','nValor'].forEach(function(k){document.getElementById(k).value=''});
+  guardar();pintar();aviso('Fichado');
+}
+function editarCompra(pid){
+  var j=D.plantilla.find(function(x){return x.id===pid});
+  var v=prompt('Precio al que compraste a '+j.nombre+':',j.compra);
+  if(v===null)return;
+  j.compra=num(v);guardar();pintar();
+}
+function vender(pid){
+  var j=D.plantilla.find(function(x){return x.id===pid});
+  var v=prompt('¿A cuánto lo vendes?',j.valor);
+  if(v===null)return;
+  var precio=num(v);
+  D.movimientos.unshift({id:id(),f:hoy(),nombre:j.nombre,compra:j.compra,venta:precio,benef:precio-j.compra});
+  D.saldo+=precio;
+  D.plantilla=D.plantilla.filter(function(x){return x.id!==pid});
+  guardar();pintar();aviso('Vendido: '+signo(precio-j.compra));
+}
+function quitar(pid){
+  if(!confirm('¿Quitar de la plantilla sin registrar venta?'))return;
+  D.plantilla=D.plantilla.filter(function(x){return x.id!==pid});
+  guardar();pintar();
+}
+
+function tendencia(j){
+  var dif=j.delta||0;
+  if(!dif&&j.hist&&j.hist.length>1) dif=j.hist[j.hist.length-1].v-j.hist[j.hist.length-2].v;
+  var r=textoRacha(j);
+  if(!dif)return r?'<s class="muted">'+r+'</s>':'';
+  var s=(dif>0?'<s class="up">▲ ':'<s class="down">▼ ')+eur(Math.abs(dif));
+  if(r)s+=' · '+r;
+  return s+'</s>';
+}
+
+function pintarPlantilla(){
+  var c=document.getElementById('listaPlantilla');
+  if(!D.plantilla.length){c.innerHTML='<div class="empty">Aún no hay jugadores.<br>Impórtalos desde el CSV o añádelos a mano.</div>';return;}
+  var orden={POR:0,DEF:1,MED:2,DEL:3};
+  var lista=D.plantilla.slice().sort(function(a,b){return (orden[a.pos]-orden[b.pos])||(b.valor-a.valor)});
+  c.innerHTML=lista.map(function(j){
+    var d=j.valor-j.compra,cls=d>0?'up':(d<0?'down':'muted');
+    return '<div class="card">'+
+      '<div class="row1">'+
+        posHTML(j)+
+        '<div class="who"><b>'+esc(j.nombre)+'</b><small>'+esc(j.equipo||'—')+' · '+j.puntos+' pts</small></div>'+
+        '<div class="delta"><b class="'+cls+'">'+signo(d)+'</b><small class="'+cls+'">'+(d>0?'+':'')+pct(d,j.compra)+'%</small></div>'+
+      '</div>'+
+      '<div class="row2">'+
+        '<span>compra <s>'+eur(j.compra)+'</s></span>'+
+        '<span>hoy <s>'+eur(j.valor)+'</s></span>'+
+        tendencia(j)+
+        '<span class="acts">'+
+          '<button onclick="editarCompra(\''+j.id+'\')">compra</button>'+
+          '<button onclick="vender(\''+j.id+'\')">vender</button>'+
+          '<button onclick="quitar(\''+j.id+'\')">✕</button>'+
+        '</span>'+
+      '</div></div>';
+  }).join('');
+}
+
+/* ============ Importación CSV ============ */
+function partir(linea,sep){
+  var out=[],act='',dentro=false;
+  for(var i=0;i<linea.length;i++){
+    var ch=linea[i];
+    if(ch==='"'){dentro=!dentro;continue;}
+    if(ch===sep&&!dentro){out.push(act.trim());act='';continue;}
+    act+=ch;
+  }
+  out.push(act.trim());
+  return out;
+}
+function buscarCol(cab,claves){
+  for(var i=0;i<cab.length;i++){
+    var h=cab[i].toLowerCase();
+    for(var k=0;k<claves.length;k++) if(h.indexOf(claves[k])>-1) return i;
+  }
+  return -1;
+}
+function normalizar(s){
+  return String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+}
+function detectarPos(v){
+  var s=normalizar(v);
+  if(s==='pt'||s==='po')return 'POR';
+  if(s==='df')return 'DEF';
+  if(s==='mc'||s==='mp')return 'MED';
+  if(s==='dl')return 'DEL';
+  if(/por|gk|guardameta|portero/.test(s))return 'POR';
+  if(/def|df|defensa|lateral|central/.test(s))return 'DEF';
+  if(/del|dl|delantero|fw|atacante/.test(s))return 'DEL';
+  return 'MED';
+}
+var RE_POS=/^(PT|PO|DF|MC|MP|DL|POR|DEF|MED|DEL)$/i;
+/* Biwenger a veces manda "DEF/MED" o "DEF, MED" en una sola celda */
+function detectarPosiciones(v){
+  var partes=String(v).split(/[\/,;|+-]| y /).filter(function(p){return p.trim()});
+  var out=[];
+  partes.forEach(function(p){
+    var d=detectarPos(p);
+    if(out.indexOf(d)<0)out.push(d);
+  });
+  if(!out.length)out=['MED'];
+  return {pos:out[0],pos2:out[1]||''};
+}
+/* Diccionario de posiciones: se aprende una vez y vale para siempre,
+   aunque vendas al jugador y vuelva a aparecer en el mercado meses después. */
+function recordarPos(nombre,pos,pos2){
+  D.posiciones=D.posiciones||{};
+  var k=normalizar(nombre);
+  if(!k)return;
+  if(pos2) D.posiciones[k]={pos:pos,pos2:pos2};
+  else delete D.posiciones[k];
+}
+function posGuardada(nombre){
+  D.posiciones=D.posiciones||{};
+  return D.posiciones[normalizar(nombre)]||null;
+}
+/* Internamente POR/DEF/MED/DEL, pero en pantalla se ven como en Biwenger */
+var ETIQUETA={POR:'PT',DEF:'DF',MED:'MC',DEL:'DL'};
+function etiq(p){return ETIQUETA[p]||p||'';}
+/* Recuadro de posición: cada una con su color, separadas por barra */
+function posHTML(j,onclick){
+  var h='<span class="p-'+j.pos+'">'+(etiq(j.pos)||'?')+'</span>';
+  if(j.pos2) h+='<span class="sep">/</span><span class="p-'+j.pos2+'">'+etiq(j.pos2)+'</span>';
+  return '<div class="pos"'+(onclick?' onclick="'+onclick+'" style="cursor:pointer"':'')+'>'+h+'</div>';
+}
+function detectarSep(l){
+  var cands=[[';',l.split(';').length],[',',l.split(',').length],['\t',l.split('\t').length],['|',l.split('|').length]];
+  cands.sort(function(a,b){return b[1]-a[1]});
+  return cands[0][1]>1?cands[0][0]:';';
+}
+function importarCSV(){
+  var txt=document.getElementById('csvTexto').value.trim();
+  var out=document.getElementById('csvResultado');
+  if(!txt){out.innerHTML='<div class="empty">No hay nada que importar. Suelta el archivo arriba o pega el contenido en el recuadro.</div>';return;}
+  var lineas=txt.replace(/^\ufeff/,'').split(/\r?\n/).filter(function(l){return l.trim()});
+  if(lineas.length<2){out.innerHTML='<div class="empty">Solo veo una línea. Falta el contenido, o el archivo usa saltos de línea raros.</div>';return;}
+
+  /* La fila de títulos no siempre es la primera: Biwenger a veces mete una
+     línea de cabecera suelta. Buscamos la primera fila que contenga el nombre. */
+  var sep=detectarSep(lineas[0]),cab=null,filaCab=0,cN=-1;
+  for(var h=0;h<Math.min(lineas.length,6);h++){
+    var s=detectarSep(lineas[h]);
+    var c=partir(lineas[h],s);
+    var idx=buscarCol(c,['nombre','jugador','name','player']);
+    if(idx>-1&&c.length>1){sep=s;cab=c;filaCab=h;cN=idx;break;}
+  }
+  if(cN<0){
+    var muestra=lineas.slice(0,3).join('\n');
+    out.innerHTML='<div class="empty">No encuentro una columna que se llame «Nombre» o «Jugador».<br>Esto es lo que estoy leyendo:</div>'+
+      '<div class="preview">'+esc(muestra)+'</div>'+
+      '<p class="hint">Si ves las columnas pegadas sin separador, el archivo se ha copiado mal. Pásame estas líneas y ajusto el lector.</p>';
+    return;
+  }
+  /* El valor de mercado manda sobre el precio de venta, que puede ser
+     el que ha puesto su dueño y no lo que vale de verdad. */
+  var cV=buscarCol(cab,['valor de mercado','market value','valor mercado']);
+  if(cV<0)cV=buscarCol(cab,['valor','value','cotiz']);
+  if(cV<0)cV=buscarCol(cab,['precio','price']);
+  var cVenta=buscarCol(cab,['precio de venta','precio venta','sale price']);
+  var cProp=buscarCol(cab,['propietario','dueño','dueno','owner','manager']);
+  var cP=buscarCol(cab,['posic','position','pos','demarc','rol']);
+  var cE=buscarCol(cab,['equipo','club','team']);
+  var cPt=buscarCol(cab,['punto','points','pts']);
+  var cMedia=buscarCol(cab,['media','average','avg']);
+  var cPJ=buscarCol(cab,['pj','partidos','games','apps']);
+
+  var destino=document.getElementById('csvDestino').value;
+  var nuevos=0,actualizados=0,recordadas=0;
+  /* El mercado cambia entero cada día: se guarda el de ayer para comparar
+     y arrancamos lista nueva con lo que traiga el CSV. */
+  var mercadoAyer=[];
+  if(destino==='mercado'){mercadoAyer=D.mercado||[];D.mercado=[];}
+
+  for(var i=filaCab+1;i<lineas.length;i++){
+    var f=partir(lineas[i],sep);
+    var nombre=f[cN];if(!nombre)continue;
+    var valor=cV>-1?num(f[cV]):0;
+    var posInfo=cP>-1?detectarPosiciones(f[cP]):{pos:'MED',pos2:''};
+    /* Si ya le puse posiciones a este jugador alguna vez, mandan las mías */
+    var guardada=posGuardada(nombre);
+    if(guardada){posInfo={pos:guardada.pos,pos2:guardada.pos2};recordadas++;}
+    var pos=posInfo.pos;
+    var equipo=cE>-1?String(f[cE]).slice(0,14):'';
+    var propietario=cProp>-1?String(f[cProp]).trim():'';
+    var libre=!propietario||/^(mercado|libre|-|)$/i.test(propietario);
+    var precioVenta=cVenta>-1?num(f[cVenta]):0;
+    var puntos=cPt>-1?entero(f[cPt]):0;
+
+    if(destino==='liga'){
+      /* Actualiza valor y puntos de TODOS: míos, de rivales y libres.
+         Es la fuente que mantiene vivas las cláusulas día a día. */
+      var media=cMedia>-1?parseFloat(String(f[cMedia]).replace(',','.')):0;
+      var pj=cPJ>-1?entero(f[cPJ]):0;
+      var reg=registrar(nombre,{valor:valor,puntos:puntos,equipo:equipo,
+                                pos:pos,pos2:posInfo.pos2,media:isNaN(media)?0:media,pj:pj});
+      if(reg){
+        var prev=reg.valorAyer||0;
+        if(prev&&prev!==valor&&reg.fValor!==hoy()) anotarDelta(reg,valor-prev);
+        if(reg.fValor!==hoy()){reg.valorAyer=prev||valor;reg.fValor=hoy();}
+        reg.valorAyer=prev||valor;
+      }
+      /* Propagar a donde ese jugador esté */
+      var k=normalizar(nombre);
+      D.plantilla.forEach(function(p){
+        if(normalizar(p.nombre)!==k)return;
+        var antes=p.valor;
+        p.valor=valor;p.puntos=puntos;if(equipo)p.equipo=equipo;
+        p.hist=p.hist||[];
+        var uf=p.hist.length?p.hist[p.hist.length-1].f:null;
+        if(uf!==hoy()){if(antes&&antes!==valor)anotarDelta(p,valor-antes);p.hist.push({f:hoy(),v:valor});}
+        else p.hist[p.hist.length-1].v=valor;
+        actualizados++;
+      });
+      (D.rivales||[]).forEach(function(r){
+        r.jugadores.forEach(function(p){
+          if(normalizar(p.nombre)!==k)return;
+          p.valor=valor;p.puntos=puntos;
+          actualizados++;
+        });
+      });
+      (D.mercado||[]).forEach(function(p){
+        if(normalizar(p.nombre)!==k)return;
+        p.valor=valor;p.puntos=puntos;
+      });
+      nuevos++;
+      continue;
+    }
+    if(destino==='plantilla'){
+      var j=D.plantilla.find(function(x){return normalizar(x.nombre)===normalizar(nombre)});
+      if(j){
+        var previo=j.valor;
+        j.valor=valor||j.valor;
+        if(cPt>-1)j.puntos=puntos;
+        if(equipo)j.equipo=equipo;
+        /* La segunda posición se respeta: el CSV solo trae una */
+        if(guardada){j.pos=guardada.pos;j.pos2=guardada.pos2;}
+        else if(posInfo.pos2&&!j.pos2) j.pos2=posInfo.pos2;
+        j.hist=j.hist||[];
+        var ultF=j.hist.length?j.hist[j.hist.length-1].f:null;
+        if(ultF!==hoy()){
+          /* Valor de otro día: la diferencia es el cambio de hoy */
+          if(previo&&j.valor!==previo) anotarDelta(j,j.valor-previo);
+          j.hist.push({f:hoy(),v:j.valor});
+        }else j.hist[j.hist.length-1].v=j.valor;
+        if(j.hist.length>40)j.hist=j.hist.slice(-40);
+        actualizados++;
+      }else{
+        D.plantilla.push({id:id(),nombre:nombre,pos:pos,pos2:posInfo.pos2,equipo:equipo,compra:valor,valor:valor,puntos:puntos,hist:[{f:hoy(),v:valor}],dhist:[]});
+        nuevos++;
+      }
+    }else{
+      /* Lo que ya estaba ayer conserva tus notas, tu precio objetivo y su
+         historial; lo demás entra limpio. */
+      var ayer=mercadoAyer.find(function(x){return normalizar(x.nombre)===normalizar(nombre)});
+      var m={id:id(),nombre:nombre,pos:pos,pos2:posInfo.pos2,equipo:equipo,
+             valor:valor,puntos:puntos,propietario:libre?'':propietario,venta:precioVenta,
+             objetivo:0,estado:'vigilando',nota:'',visto:hoy(),dhist:[],delta:0};
+      if(ayer){
+        m.objetivo=ayer.objetivo||0;m.estado=ayer.estado||'vigilando';m.nota=ayer.nota||'';
+        m.dhist=ayer.dhist||[];m.delta=ayer.delta||0;
+        if(!m.pos2&&ayer.pos2)m.pos2=ayer.pos2;
+        if(valor&&ayer.valor&&valor!==ayer.valor&&ayer.visto!==hoy()) anotarDelta(m,valor-ayer.valor);
+        actualizados++;
+      }else nuevos++;
+      if(guardada){m.pos=guardada.pos;m.pos2=guardada.pos2;}
+      D.mercado.push(m);
+    }
+  }
+  if(!nuevos&&!actualizados){
+    out.innerHTML='<div class="empty">He leído las columnas pero no había ninguna fila con datos debajo.</div>';
+    return;
+  }
+  marcarFuente(destino==='liga'?'liga':(destino==='mercado'?'mercado':'plantilla'));
+  guardar();pintar();
+  document.getElementById('csvTexto').value='';
+  var aviso1=(destino==='plantilla'&&nuevos)?'<p class="hint" style="margin-top:10px">Los '+nuevos+' jugadores nuevos han entrado con el precio de compra igual al valor de hoy. Corrígelo en Plantilla → botón «compra» si pagaste otra cosa.</p>':'';
+  var etiqDest=(destino==='plantilla')?'mi plantilla':'mercado de fichajes · lista sustituida';
+  var salieron=(destino==='mercado')?mercadoAyer.length-actualizados:0;
+  out.innerHTML='<div class="card"><div class="row1"><div class="who"><b>'+(destino==='mercado'?(nuevos+' nuevos · '+actualizados+' repiten'):(actualizados+' actualizados · '+nuevos+' nuevos'))+'</b><small>'+etiqDest+
+    (salieron>0?' · '+salieron+' ya no están':'')+(recordadas?' · '+recordadas+' posiciones recordadas':'')+'</small></div></div></div>'+aviso1;
+}
+
+/* ============ Cambios diarios y rachas ============ */
+function anotarDelta(j,d){
+  j.delta=d;
+  j.dhist=j.dhist||[];
+  var f=hoy();
+  if(j.dhist.length&&j.dhist[j.dhist.length-1].f===f) j.dhist[j.dhist.length-1].d=d;
+  else j.dhist.push({f:f,d:d});
+  if(j.dhist.length>60)j.dhist=j.dhist.slice(-60);
+}
+/* Días seguidos en la misma dirección, mirando de hoy hacia atrás */
+function racha(j){
+  if(!j.dhist||!j.dhist.length)return {n:0,dir:0};
+  var ult=j.dhist[j.dhist.length-1].d;
+  if(!ult)return {n:0,dir:0};
+  var dir=ult>0?1:-1,n=0;
+  for(var i=j.dhist.length-1;i>=0;i--){
+    var d=j.dhist[i].d;
+    if((d>0?1:(d<0?-1:0))!==dir)break;
+    n++;
+  }
+  return {n:n,dir:dir};
+}
+function textoRacha(j){
+  var r=racha(j);
+  if(!r.n)return '';
+  return r.n+(r.dir>0?'d ↑':'d ↓');
+}
+function setDelta(pid,valor){
+  var j=D.plantilla.find(function(x){return x.id===pid});
+  if(!j)return;
+  anotarDelta(j,num(valor));
+  guardar();pintarCambios();pintarPlantilla();
+}
+function pintarCambios(){
+  var c=document.getElementById('listaCambios');
+  if(!D.plantilla.length){c.innerHTML='<div class="empty">No hay jugadores en la plantilla.</div>';return;}
+  var orden={POR:0,DEF:1,MED:2,DEL:3};
+  var lista=D.plantilla.slice().sort(function(a,b){return (orden[a.pos]-orden[b.pos])||(b.valor-a.valor)});
+  c.innerHTML=lista.map(function(j){
+    var d=j.delta||0,cls=d>0?'up':(d<0?'down':'muted');
+    var r=racha(j),rcls=r.dir>0?'up':(r.dir<0?'down':'muted');
+    return '<div class="chg">'+
+      posHTML(j)+
+      '<div class="who"><b>'+esc(j.nombre)+'</b><small class="muted mono">'+eur(j.valor)+'</small></div>'+
+      '<span class="racha '+rcls+'">'+textoRacha(j)+'</span>'+
+      '<input class="mono '+cls+'" inputmode="decimal" placeholder="0" value="'+(d?(Math.abs(d)>=1e6?(d/1e6).toFixed(2).replace('.',','):Math.round(d/1e3)):'')+'" '+
+      'onchange="setDelta(\''+j.id+'\',this.value)">'+
+    '</div>';
+  }).join('');
+}
+/* Al cerrar el día, los cambios pasan a ser de ayer y se limpia la casilla */
+function cerrarDia(){
+  var f=hoy();
+  D.plantilla.forEach(function(j){
+    if(j.delta){
+      j.dhist=j.dhist||[];
+      if(!j.dhist.length||j.dhist[j.dhist.length-1].f!==f) j.dhist.push({f:f,d:j.delta});
+      j.delta=0;
+    }
+  });
+  guardar();pintar();aviso('Día cerrado. Rachas actualizadas');
+}
+
+/* ============ Radar ============ */
+function addObjetivo(){
+  var n=document.getElementById('mNombre').value.trim();
+  if(!n){aviso('Falta el nombre');return;}
+  D.mercado.push({id:id(),nombre:n,pos:'',pos2:'',equipo:'',dhist:[],
+    valor:num(document.getElementById('mValor').value),
+    objetivo:num(document.getElementById('mObjetivo').value),
+    estado:'vigilando',nota:document.getElementById('mNota').value.trim(),visto:hoy()});
+  ['mNombre','mValor','mObjetivo','mNota'].forEach(function(k){document.getElementById(k).value=''});
+  guardar();pintar();aviso('Añadido');
+}
+function ciclarEstado(mid){
+  var m=D.mercado.find(function(x){return x.id===mid});
+  var ciclo=['vigilando','pujado','descartado'];
+  m.estado=ciclo[(ciclo.indexOf(m.estado)+1)%3];
+  guardar();pintar();
+}
+function quitarObjetivo(mid){
+  D.mercado=D.mercado.filter(function(x){return x.id!==mid});guardar();pintar();
+}
+function setDeltaMercado(mid,valor){
+  var m=D.mercado.find(function(x){return x.id===mid});
+  if(!m)return;
+  anotarDelta(m,num(valor));
+  guardar();pintarMercado();
+}
+/* El mercado cierra a las 7:00 y las pujas son a ciegas: saber cuánto queda
+   importa, porque la última puja antes del cierre es la que decide. */
+function pintarCierre(){
+  var c=document.getElementById('cierreMercado');
+  if(!c)return;
+  var ahora=new Date();
+  var cierre=new Date(ahora);
+  cierre.setHours(7,0,0,0);
+  if(ahora>=cierre) cierre.setDate(cierre.getDate()+1);
+  var min=Math.floor((cierre-ahora)/60000);
+  var hh=Math.floor(min/60),mm=min%60;
+  var urgente=min<120;
+  c.innerHTML='<div class="card" style="'+(urgente?'border-color:var(--gold)':'')+'">'+
+    '<div class="row1"><div class="who"><b>El mercado cierra en '+hh+'h '+(mm<10?'0':'')+mm+'m</b>'+
+    '<small class="muted">'+(urgente?'última hora para pujar':'a las 7:00 se adjudica al mejor postor')+'</small>'+
+    '</div></div></div>';
+}
+function pintarMercado(){
+  pintarCierre();
+  var c=document.getElementById('listaMercado');
+  if(!D.mercado.length){c.innerHTML='<div class="empty">Aún no has importado el mercado de hoy.</div>';return;}
+  var clases={vigilando:'watch',pujado:'bid',descartado:'out'};
+  c.innerHTML=D.mercado.map(function(m){
+    var enPrecio=m.objetivo&&m.valor&&m.valor<=m.objetivo;
+    var d=m.delta||0,dcls=d>0?'up':(d<0?'down':'muted');
+    var r=racha(m),rcls=r.dir>0?'up':(r.dir<0?'down':'muted');
+    var dueno=duenoDe(m.nombre);
+    return '<div class="card"><div class="row1">'+
+      posHTML(m)+
+      '<div class="who"><b>'+esc(m.nombre)+'</b><small>'+esc(m.equipo||'—')+' · '+puntosTxt(m.puntos)+
+        (m.pujas?' · '+m.pujas+(m.pujas===1?' puja':' pujas'):'')+'</small></div>'+
+      '<div class="delta"><b class="'+(enPrecio?'up':'')+'">'+eur(m.valor)+'</b>'+
+      (m.objetivo?'<small class="muted">quiero ≤ '+eur(m.objetivo)+'</small>':'')+'</div>'+
+      '</div><div class="row2">'+
+      '<span class="tag '+clases[m.estado]+'" onclick="ciclarEstado(\''+m.id+'\')" style="cursor:pointer">'+m.estado+'</span>'+
+      (m.cambioPendiente?'<s class="muted">cambió '+eur(m.cambioPendiente)+' hoy · ¿'+
+        '<b style="cursor:pointer;color:var(--up)" onclick="resolverSigno(\''+m.id+'\',1)">subió</b> o '+
+        '<b style="cursor:pointer;color:var(--down)" onclick="resolverSigno(\''+m.id+'\',-1)">bajó</b>?</s>':'')+
+      (d?'<s class="'+dcls+'">hoy '+signo(d)+'</s>':'')+
+      (r.n>1?'<s class="'+rcls+'">'+r.n+'d '+(r.dir>0?'↑':'↓')+'</s>':'')+
+      (dueno?'<s class="muted">en '+esc(dueno)+'</s>':'')+
+      (enPrecio?'<s class="up">a tu precio</s>':'')+
+      (m.nota?'<s class="muted">'+esc(m.nota)+'</s>':'')+
+      '<span class="acts">'+
+        '<input class="mono" inputmode="decimal" placeholder="Δ hoy" style="width:76px;padding:3px 7px;font-size:11px;text-align:right" '+
+        'value="'+(d?(Math.abs(d)>=1e6?(d/1e6).toFixed(2).replace('.',','):Math.round(d/1e3)):'')+'" onchange="setDeltaMercado(\''+m.id+'\',this.value)">'+
+        '<button onclick="quitarObjetivo(\''+m.id+'\')">✕</button>'+
+      '</span>'+
+      '</div></div>';
+  }).join('');
+}
+
+/* ============ Registro global de jugadores ============
+   Un único sitio donde vive cada jugador que ha pasado por la app. Todas las
+   importaciones lo alimentan; el dueño y el valor se recalculan solos. */
+function registrar(nombre,datos){
+  if(!nombre)return null;
+  D.jugadores=D.jugadores||{};
+  var k=normalizar(nombre);
+  if(!k)return null;
+  var j=D.jugadores[k];
+  if(!j){j={nombre:nombre,pos:'',pos2:'',valor:0,pagado:0,puntos:0,
+            duenoTipo:'libre',dueno:'',equipo:'',visto:hoy()};D.jugadores[k]=j;}
+  if(datos.valor)j.valor=datos.valor;
+  if(datos.pagado!==undefined)j.pagado=datos.pagado;
+  /* Los puntos se guardan siempre: el 0 y los negativos son información */
+  if(datos.puntos!==undefined&&datos.puntos!==null&&datos.puntos!=='')j.puntos=datos.puntos;
+  if(datos.equipo)j.equipo=datos.equipo;
+  if(datos.media!==undefined)j.media=datos.media;
+  if(datos.pj!==undefined)j.pj=datos.pj;
+  if(datos.duenoTipo){j.duenoTipo=datos.duenoTipo;j.dueno=datos.dueno||'';}
+  /* El diccionario de posiciones manda siempre */
+  var g=posGuardada(nombre);
+  if(g){j.pos=g.pos;j.pos2=g.pos2;}
+  else{
+    if(datos.pos&&!j.pos)j.pos=datos.pos;
+    if(datos.pos2&&!j.pos2)j.pos2=datos.pos2;
+  }
+  j.visto=hoy();
+  return j;
+}
+/* Los puntos son un entero normal: 1 es 1, no un millón */
+function entero(v){
+  if(v===null||v===undefined)return 0;
+  var s=String(v).trim().replace(/[^\d-]/g,'');
+  if(!s||s==='-')return 0;
+  var n=parseInt(s,10);
+  return isNaN(n)?0:n;
+}
+/* Los puntos se muestran siempre, incluidos el 0 y los negativos */
+function puntosTxt(p){
+  var n=(p===undefined||p===null||p==='')?0:p;
+  if(n<0)return '<span class="down">'+n+' pts</span>';
+  return n+' pts';
+}
+/* Cláusula de cualquier jugador: 1,5 x lo mayor entre valor y lo pagado */
+function clausulaJugador(j){
+  return Math.round((Math.max(j.valor||0,j.pagado||0)+(j.deposito||0))*FACTOR);
+}
+/* Recalcula dueños a partir de mi plantilla y de las plantillas rivales */
+function sincronizarJugadores(){
+  D.jugadores=D.jugadores||{};
+  Object.keys(D.jugadores).forEach(function(k){
+    var j=D.jugadores[k];
+    j.duenoTipo='libre';j.dueno='';j.pagado=0;j.deposito=0;
+  });
+  D.plantilla.forEach(function(p){
+    registrar(p.nombre,{valor:p.valor,pagado:p.compra,puntos:p.puntos,equipo:p.equipo,
+      pos:p.pos,pos2:p.pos2,duenoTipo:'mio',dueno:D.miEquipo||'Mi equipo'});
+  });
+  (D.rivales||[]).forEach(function(r){
+    r.jugadores.forEach(function(p){
+      registrar(p.nombre,{valor:p.valor,pagado:p.pagado,puntos:p.puntos,
+        pos:p.pos,pos2:p.pos2,duenoTipo:'rival',dueno:r.nombre});
+    });
+  });
+  (D.mercado||[]).forEach(function(m){
+    var k=normalizar(m.nombre);
+    var j=D.jugadores[k];
+    if(!j||j.duenoTipo==='libre')
+      registrar(m.nombre,{valor:m.valor,puntos:m.puntos,pos:m.pos,pos2:m.pos2,equipo:m.equipo,
+        duenoTipo:m.propietario?'rival':'mercado',dueno:m.propietario||''});
+    else registrar(m.nombre,{valor:m.valor,puntos:m.puntos});
+  });
+}
+/* Cambiar posiciones aquí las cambia en todas partes y para siempre */
+function editarPosJugador(clave){
+  var j=D.jugadores[clave];
+  if(!j)return;
+  var v=prompt('Posiciones de '+j.nombre+' (una o dos, separadas por barra: DF/MC)',
+               etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):''));
+  if(v===null)return;
+  var r=detectarPosiciones(v);
+  j.pos=r.pos;j.pos2=r.pos2;
+  recordarPos(j.nombre,r.pos,r.pos2);
+  /* Propagar a plantilla, mercado y rivales */
+  var k=normalizar(j.nombre);
+  D.plantilla.forEach(function(p){if(normalizar(p.nombre)===k){p.pos=r.pos;p.pos2=r.pos2;}});
+  (D.mercado||[]).forEach(function(p){if(normalizar(p.nombre)===k){p.pos=r.pos;p.pos2=r.pos2;}});
+  (D.rivales||[]).forEach(function(x){x.jugadores.forEach(function(p){
+    if(normalizar(p.nombre)===k){p.pos=r.pos;p.pos2=r.pos2;}});});
+  guardar();pintar();
+}
+function pintarJugadores(){
+  var cont=document.getElementById('listaJugadores');
+  var res=document.getElementById('resumenJugadores');
+  if(!cont)return;
+  D.jugadores=D.jugadores||{};
+  var claves=Object.keys(D.jugadores);
+  if(!claves.length){
+    res.innerHTML='';
+    cont.innerHTML='<div class="empty">Todavía no ha pasado ningún jugador por aquí.<br>Importa el tablón, el mercado o tu plantilla.</div>';
+    return;
+  }
+  var q=normalizar((document.getElementById('jBuscar')||{}).value||'');
+  var filtro=(document.getElementById('jFiltro')||{}).value||'todos';
+  var sinPos=claves.filter(function(k){return !D.jugadores[k].pos;}).length;
+  res.innerHTML='<div class="card"><div class="row1"><div class="who">'+
+    '<b>'+claves.length+' jugadores registrados</b>'+
+    '<small>'+(sinPos?sinPos+' sin posición asignada':'todos con posición')+'</small></div></div></div>';
+
+  var lista=claves.map(function(k){return {k:k,j:D.jugadores[k]};}).filter(function(x){
+    var j=x.j;
+    if(filtro==='sinpos'&&j.pos)return false;
+    if(filtro==='mios'&&j.duenoTipo!=='mio')return false;
+    if(filtro==='rivales'&&j.duenoTipo!=='rival')return false;
+    if(filtro==='libres'&&j.duenoTipo!=='libre'&&j.duenoTipo!=='mercado')return false;
+    if(q&&normalizar(j.nombre).indexOf(q)<0&&normalizar(j.dueno||'').indexOf(q)<0
+        &&normalizar(j.equipo||'').indexOf(q)<0)return false;
+    return true;
+  }).sort(function(a,b){return b.j.valor-a.j.valor;});
+
+  if(!lista.length){cont.innerHTML='<div class="empty">Ningún jugador con ese filtro.</div>';return;}
+
+  var etiqDueno={mio:'tuyo',rival:'',mercado:'en el mercado',libre:'libre'};
+  cont.innerHTML=lista.slice(0,300).map(function(x){
+    var j=x.j;
+    var cl=clausulaJugador(j);
+    var sp=(j.pagado||0)>(j.valor||0)?j.pagado-j.valor:0;
+    var quien=j.duenoTipo==='rival'?esc(j.dueno):(etiqDueno[j.duenoTipo]||'');
+    return '<div class="card"><div class="row1">'+
+      posHTML(j,'editarPosJugador(\''+x.k+'\')')+
+      '<div class="who"><b>'+esc(j.nombre)+'</b><small>'+
+        (j.equipo?esc(j.equipo)+' · ':'')+quien+' · '+puntosTxt(j.puntos)+'</small></div>'+
+      '<div class="delta"><b>'+eur(j.valor)+'</b><small class="muted">cl '+eur(cl)+'</small></div>'+
+      '</div>'+
+      (sp?'<div class="row2"><s class="down">su dueño pagó '+eur(sp)+' de más</s></div>':'')+
+      '</div>';
+  }).join('')+(lista.length>300?'<p class="hint">Mostrando los 300 más valiosos. Usa el buscador para afinar.</p>':'');
+}
+
+/* ============ Mercado pegado en bruto ============
+   El texto copiado trae la magnitud del cambio pero no el signo, porque en
+   Biwenger es una flecha de color. El signo se deduce comparando con el valor
+   que ya teníamos guardado, y la magnitud sirve para comprobar que cuadra. */
+function importarMercadoBruto(){
+  var txt=document.getElementById('mkTexto').value;
+  var out=document.getElementById('mkResultado');
+  if(!txt.trim()){aviso('Pega el mercado primero');return;}
+  var leidos=leerPlantillaBruta(txt);
+  if(!leidos.length){
+    out.innerHTML='<div class="empty">No he reconocido ningún jugador en ese texto.</div>';
+    return;
+  }
+  var previos=D.mercado||[];
+  D.mercado=[];
+  var nuevos=0,repiten=0,resueltos=0,sinSigno=[],descuadres=[];
+
+  leidos.forEach(function(p){
+    var ayer=previos.find(function(x){return normalizar(x.nombre)===normalizar(p.nombre);});
+    /* Si no está en el mercado de ayer, quizá lo conozcamos del registro global */
+    var conocido=(D.jugadores||{})[normalizar(p.nombre)];
+    var valorPrevio=ayer?ayer.valor:(conocido?conocido.valor:0);
+
+    var m={id:id(),nombre:p.nombre,pos:p.pos,pos2:p.pos2,equipo:conocido?conocido.equipo:'',
+           valor:p.valor,puntos:p.puntos,pujas:p.pujas||0,propietario:'',venta:0,
+           objetivo:ayer?(ayer.objetivo||0):0,estado:ayer?(ayer.estado||'vigilando'):'vigilando',
+           nota:ayer?(ayer.nota||''):'',visto:hoy(),dhist:ayer?(ayer.dhist||[]):[],delta:0};
+
+    var g=posGuardada(p.nombre);
+    if(g){m.pos=g.pos;m.pos2=g.pos2;}
+    else if(p.pos2)recordarPos(p.nombre,p.pos,p.pos2);
+
+    if(valorPrevio&&valorPrevio!==p.valor){
+      /* Aquí está la deducción: la dirección la da el valor de ayer */
+      var dif=p.valor-valorPrevio;
+      anotarDelta(m,dif);
+      resueltos++;
+      if(p.cambio&&Math.abs(Math.abs(dif)-p.cambio)>1000)
+        descuadres.push(p.nombre+' ('+eur(Math.abs(dif))+' calculado frente a '+eur(p.cambio)+' pegado)');
+    }else if(p.cambio&&!valorPrevio){
+      /* Sin referencia previa no se puede saber la dirección */
+      m.cambioPendiente=p.cambio;
+      sinSigno.push(m);
+    }
+    if(ayer)repiten++;else nuevos++;
+    D.mercado.push(m);
+  });
+
+  marcarFuente('mercado');
+  guardar();pintar();
+  document.getElementById('mkTexto').value='';
+  out.innerHTML='<div class="card" style="margin-top:12px"><div class="row1"><div class="who">'+
+    '<b>'+leidos.length+' jugadores · '+resueltos+' con cambio deducido</b><small>'+
+    nuevos+' nuevos · '+repiten+' repiten'+(sinSigno.length?' · '+sinSigno.length+' sin referencia de ayer':'')+
+    '</small></div></div></div>'+
+    (descuadres.length?'<p class="hint" style="margin-top:10px"><b>No cuadran:</b><br>'+esc(descuadres.join('\n'))+'</p>':'');
+}
+/* Un toque para decidir la dirección cuando no hay valor de ayer */
+function resolverSigno(mid,dir){
+  var m=(D.mercado||[]).find(function(x){return x.id===mid;});
+  if(!m||!m.cambioPendiente)return;
+  anotarDelta(m,dir*m.cambioPendiente);
+  delete m.cambioPendiente;
+  guardar();pintarMercado();
+}
+
+/* ============ Rivales de la liga ============ */
+var FACTOR=1.5;
+/* La cláusula es 1,5 x la base, y la base es el valor de mercado salvo que
+   el dueño pagara más: entonces manda lo que pagó. */
+function baseDe(j){
+  /* El dueño puede depositar dinero para blindar al jugador: ese depósito
+     se suma a la base y por tanto también se multiplica por 1,5. */
+  return Math.max(j.valor||0,j.pagado||0)+(j.deposito||0);
+}
+function clausulaDe(j){
+  return Math.round(baseDe(j)*FACTOR);
+}
+/* Cuánto pagó de más el dueño sobre el valor actual */
+function sobrepago(j){
+  return (j.pagado||0)>(j.valor||0)?j.pagado-j.valor:0;
+}
+/* Lee líneas irregulares: "Vinicius 31.200.000 45.000.000 3d" o "Pedri 22,5M cl 34M".
+   El primer número es el valor, el segundo la cláusula, y "3d" los días de bloqueo. */
+function parsearLinea(l){
+  var linea=l.trim();
+  if(!linea)return null;
+  var dias=null;
+  var md=linea.match(/(\d+)\s*d(ías?|ias?)?\b/i);
+  if(md){dias=parseInt(md[1],10);linea=linea.replace(md[0],' ');}
+  if(/semana/i.test(linea)){dias=7;linea=linea.replace(/una\s+semana|semanas?/gi,' ');}
+  var cifras=linea.match(/\d[\d.,]*\s*[MK]?/gi)||[];
+  var nombre=linea.split(/\d/)[0].replace(/[|·,;:\-–€\s]+$/,'').trim();
+  if(!nombre)return null;
+  var vals=cifras.map(num).filter(function(v){return v>0});
+  return {nombre:nombre,valor:vals[0]||0,clausula:vals[1]||0,dias:dias};
+}
+/* Lee el tablón de Biwenger copiado como texto plano. Cada movimiento repite
+   el nombre del jugador con las posiciones en medio: ese es el ancla. */
+var RE_SECCION=/^(fichajes|mercado de fichajes|movimiento de jugadores|liga reiniciada|quiniela|fin de|comienzo de|nuevo usuario|jornada \d|puedes ver el resultado|al haber partidos|la liga ha sido|cláusulas?|clausulas?|traspasos?|intercambios?)/i;
+var RE_FECHA=/^(hace \w+|ayer|hoy|\d{1,2} \w{3,}|\d+ (hora|día|dia|minuto)s?)/i;
+var RE_RUIDO=/^(venta inmediata|mercado|\d+ pujas?|-?\d+$|.*puntos\t|¡|más información|síguela|envíanos|premios|\d+º)/i;
+
+function leerTablon(txt){
+  /* Según de dónde se copie, el texto puede venir con enlaces de markdown
+     o en texto plano. Se normaliza a texto plano antes de leer nada. */
+  var L=txt.replace(/\[([^\]]*)\]\([^)]*\)/g,'$1')
+           .split(/\r?\n/)
+           .map(function(s){return s.replace(/^\s*[*\-•]\s+/,'').trim();});
+  var entradas=[],cabecera=null,i=0;
+  function ancla(k){
+    var linea=L[k];
+    if(!linea||RE_SECCION.test(linea)||RE_FECHA.test(linea)||RE_RUIDO.test(linea)||RE_POS.test(linea))return -1;
+    var pos=[];
+    for(var j=k+1;j<=k+6&&j<L.length;j++){
+      if(L[j]===''||L[j]==='/')continue;
+      if(RE_POS.test(L[j])){pos.push(detectarPos(L[j]));continue;}
+      if(L[j]===linea)return {fin:j,pos:pos};
+      return -1;
+    }
+    return -1;
+  }
+  while(i<L.length){
+    var l=L[i];
+    if(!l){i++;continue;}
+    if(RE_SECCION.test(l)){
+      cabecera=null;
+      var n=i+1;
+      while(n<L.length&&L[n]==='')n++;
+      if(n<L.length&&!RE_FECHA.test(L[n])&&!RE_SECCION.test(L[n])&&ancla(n)===-1&&!RE_RUIDO.test(L[n])) cabecera=L[n];
+      i++;continue;
+    }
+    var a=ancla(i);
+    if(a===-1){i++;continue;}
+    var e={nombre:l,pos:a.pos,equipo:null,precio:0,tipo:null,clausulazo:false};
+    var j=a.fin+1;
+    for(;j<L.length;j++){
+      var b=L[j];
+      if(b==='')continue;
+      /* "Deposita X €" y "Nueva cláusula Y €": el dueño blinda al jugador,
+         no cambia de equipo. Se comprueba antes que nada. */
+      var mdep=b.match(/^deposita\s+([\d.,]+)/i);
+      if(mdep){e.tipo='deposito';e.deposito=num(mdep[1]);continue;}
+      var mnc=b.match(/^nueva\s+cl[áa]usula\s+([\d.,]+)/i);
+      if(mnc){e.tipo='deposito';e.nuevaClausula=num(mnc[1]);continue;}
+      /* "Cláusula pagada por" sí es un movimiento; "Cláusulas" a secas
+         es solo el encabezado de la sección. */
+      if(/^(cláusula|clausula|clausulazo)\s+\S/i.test(b)||/^(traspasad|traspasa\s|intercambiad|pagad[oa])/i.test(b)){
+        e.tipo='compra';e.clausulazo=true;continue;
+      }
+      if(RE_SECCION.test(b))break;
+      if(ancla(j)!==-1)break;
+      if(/^ha abandonado/i.test(b)){e.tipo='fuera';break;}
+      if(/^fichado por/i.test(b)){e.tipo='compra';continue;}
+      var mv=b.match(/^vendido por\s+([\d.]+)/i);
+      if(mv){e.tipo='venta';e.precio=num(mv[1]);continue;}
+      var mp=b.match(/^por\s+([\d.]+)/i);
+      if(mp){e.precio=num(mp[1]);if(!e.tipo)e.tipo='venta';continue;}
+      if(b==='Mercado'||RE_RUIDO.test(b))continue;
+      if(!e.equipo)e.equipo=b;
+    }
+    if(e.tipo==='venta'&&!e.equipo)e.equipo=cabecera;
+    if(e.tipo==='compra'&&!e.equipo)e.equipo=cabecera;
+    if(e.tipo==='deposito'&&!e.equipo)e.equipo=cabecera;
+    entradas.push(e);
+    i=j;
+  }
+  return entradas;
+}
+
+function duenoActual(nombre){
+  var res=null;
+  (D.rivales||[]).forEach(function(r){
+    r.jugadores.forEach(function(x){ if(normalizar(x.nombre)===normalizar(nombre)) res=r.nombre; });
+  });
+  return res;
+}
+function quitarDeTodos(nombre){
+  var n=0;
+  (D.rivales||[]).forEach(function(r){
+    var antes=r.jugadores.length;
+    r.jugadores=r.jugadores.filter(function(x){return normalizar(x.nombre)!==normalizar(nombre);});
+    if(r.jugadores.length<antes)n++;
+  });
+  return n;
+}
+
+function importarActividad(){
+  var txt=document.getElementById('actTexto').value;
+  var out=document.getElementById('actResultado');
+  if(!txt.trim()){aviso('Pega el tablón primero');return;}
+  D.rivales=D.rivales||[];D.movLiga=D.movLiga||[];
+  var mio=normalizar(D.miEquipo||'');
+  var entradas=leerTablon(txt);
+  if(!entradas.length){
+    out.innerHTML='<div class="empty">No he reconocido ningún movimiento en ese texto.</div>';
+    return;
+  }
+  /* El tablón viene del más reciente al más antiguo: se aplica al revés
+     para que el último movimiento de cada jugador sea el que manda. */
+  entradas.reverse();
+
+  var altas=0,bajas=0,posAprendidas=0,propios=0,detalle=[];
+  entradas.forEach(function(e){
+    if(e.pos.length>1){recordarPos(e.nombre,e.pos[0],e.pos[1]);posAprendidas++;}
+    var antes=duenoActual(e.nombre);
+
+    if(e.tipo==='fuera'){
+      if(quitarDeTodos(e.nombre))bajas++;
+      detalle.push({t:'fuera',n:e.nombre,de:antes,a:null,p:0});
+      return;
+    }
+    if(e.tipo==='venta'){
+      if(quitarDeTodos(e.nombre))bajas++;
+      detalle.push({t:'venta',n:e.nombre,de:e.equipo||antes,a:null,p:e.precio});
+      return;
+    }
+    if(e.tipo!=='compra'||!e.equipo)return;
+    quitarDeTodos(e.nombre);
+    if(mio&&normalizar(e.equipo)===mio){
+      propios++;
+      detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,de:antes,a:e.equipo,p:e.precio,mio:true});
+      return;
+    }
+    var r=D.rivales.find(function(x){return normalizar(x.nombre)===normalizar(e.equipo);});
+    if(!r){r={id:id(),nombre:e.equipo,jugadores:[],f:hoy()};D.rivales.push(r);}
+    var g=posGuardada(e.nombre);
+    r.jugadores.push({nombre:e.nombre,valor:e.precio,pagado:e.precio,dias:null,
+      pos:g?g.pos:(e.pos[0]||''),pos2:g?g.pos2:(e.pos[1]||''),desde:hoy()});
+    altas++;
+    detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,de:antes,a:e.equipo,p:e.precio});
+  });
+
+  /* Se guarda el historial para poder revisarlo después */
+  D.movLiga=detalle.slice().reverse().concat(D.movLiga).slice(0,400);
+  marcarFuente('tablon');
+  guardar();pintar();
+  document.getElementById('actTexto').value='';
+  out.innerHTML='<div class="card" style="margin-top:12px"><div class="row1"><div class="who">'+
+    '<b>'+altas+' altas · '+bajas+' salidas</b><small>'+
+    entradas.length+' movimientos leídos · '+posAprendidas+' multiposiciones'+
+    (propios?' · '+propios+' tuyos':'')+'</small></div></div></div>'+
+    '<p class="hint" style="margin-top:12px">Revisa abajo que lo haya interpretado bien.</p>';
+}
+
+function pintarMovLiga(){
+  var c=document.getElementById('listaMovLiga');
+  if(!c)return;
+  var m=D.movLiga||[];
+  if(!m.length){c.innerHTML='';return;}
+  var icono={compra:'→',venta:'✕',clausulazo:'⚡',fuera:'⊘'};
+  var color={compra:'up',venta:'down',clausulazo:'',fuera:'muted'};
+  c.innerHTML='<p class="hint" style="margin-top:18px"><b>Lo que he entendido del tablón</b></p>'+
+    m.slice(0,60).map(function(x){
+      var destino=x.t==='venta'?'al mercado':(x.t==='fuera'?'fuera de la competición':esc(x.a||'?'));
+      return '<div class="chg">'+
+        '<span class="racha '+(color[x.t]||'')+'" style="min-width:18px">'+(icono[x.t]||'·')+'</span>'+
+        '<div class="who"><b>'+esc(x.n)+(x.mio?' <span class="tag watch">tuyo</span>':'')+'</b>'+
+        '<small class="muted">'+(x.de?esc(x.de)+' → ':'')+destino+(x.p?' · '+eur(x.p):'')+'</small></div>'+
+      '</div>';
+    }).join('')+
+    '<button class="btn ghost" style="margin-top:10px" onclick="borrarMovLiga()">Vaciar este historial</button>';
+}
+function borrarMovLiga(){
+  if(!confirm('Se borra solo el historial de movimientos leídos. Las plantillas no se tocan.'))return;
+  D.movLiga=[];guardar();pintarMovLiga();
+}
+
+/* Lee la plantilla de un rival copiada en bruto de Biwenger. El ancla es una
+   línea con el nombre seguida de otra que es solo un importe; hacia atrás
+   están las posiciones, los puntos y el "Fichado por X € el D/M/AA". */
+var RE_DINERO=/^-?[\d.,]+\s*€$/;
+var RE_FICHADO=/^fichado(\s+por\s+([\d.,]+)\s*€)?\s*el\s/i;
+var RE_IGNORAR=/^(pujar|vender|cláusula|clausula|venta|comprar|puja)/i;
+
+function leerPlantillaBruta(txt){
+  var L=txt.replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')
+           .split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return s!=='';});
+  var out=[];
+  for(var i=0;i<L.length-1;i++){
+    var nombre=L[i];
+    if(!RE_DINERO.test(L[i+1]))continue;
+    if(RE_DINERO.test(nombre)||RE_POS.test(nombre)||RE_IGNORAR.test(nombre))continue;
+    if(RE_FICHADO.test(nombre)||/^\d+$/.test(nombre))continue;
+    var valor=num(L[i+1]);
+    /* Tras el valor puede venir la subida o bajada del día, sin signo */
+    var cambio=(i+2<L.length&&RE_DINERO.test(L[i+2]))?num(L[i+2]):0;
+    var pos=[],puntos=0,pagado=0,pujas=0;
+    /* "2 pujas" puede venir justo detrás del valor */
+    for(var w=i+2;w<=i+4&&w<L.length;w++){
+      var mp2=L[w].match(/^(\d+)\s*pujas?$/i);
+      if(mp2){pujas=parseInt(mp2[1],10);break;}
+    }
+    for(var k=i-1;k>=0&&k>=i-8;k--){
+      var b=L[k];
+      if(/^\d+\s*pujas?$/i.test(b)){pujas=parseInt(b,10);continue;}
+      if(RE_IGNORAR.test(b))break;
+      if(b===nombre)break;
+      if(RE_POS.test(b)){pos.unshift(detectarPos(b));continue;}
+      if(b==='/')continue;
+      if(/^\d+$/.test(b)){puntos=parseInt(b,10);continue;}
+      var mf=b.match(RE_FICHADO);
+      if(mf){if(mf[2])pagado=num(mf[2]);break;}
+      if(RE_DINERO.test(b))continue;
+      break;
+    }
+    out.push({nombre:nombre,pos:pos[0]||'',pos2:pos[1]||'',valor:valor,cambio:cambio,pujas:pujas,
+              pagado:pagado||valor,puntos:puntos,dias:null});
+    i++;
+  }
+  return out;
+}
+
+function importarRival(){
+  var eq=document.getElementById('rNombre').value.trim();
+  var txt=document.getElementById('rTexto').value;
+  var out=document.getElementById('rResultado');
+  if(!eq){aviso('Ponle nombre al equipo');return;}
+  if(!txt.trim()){aviso('Pega la plantilla');return;}
+
+  /* Primero el formato en bruto de Biwenger; si no da nada, el simple */
+  var jugadores=leerPlantillaBruta(txt);
+  var modo='formato Biwenger';
+  if(!jugadores.length){
+    modo='formato simple';
+    var segundo=document.getElementById('rSegundo').value;
+    txt.split(/\r?\n/).forEach(function(l){
+      var p=parsearLinea(l);
+      if(!p||!p.valor)return;
+      if(p.clausula) p.pagado=(segundo==='pagado')?p.clausula:Math.round(p.clausula/FACTOR);
+      else p.pagado=p.valor;
+      delete p.clausula;
+      p.pos=p.pos||'';p.pos2=p.pos2||'';
+      jugadores.push(p);
+    });
+  }
+  if(!jugadores.length){
+    out.innerHTML='<div class="empty">No he reconocido ningún jugador en ese texto.</div>';
+    return;
+  }
+  /* El diccionario manda sobre lo que traiga el texto */
+  jugadores.forEach(function(p){
+    if(p.pos2) recordarPos(p.nombre,p.pos,p.pos2);
+    var g=posGuardada(p.nombre);
+    if(g){p.pos=g.pos;p.pos2=g.pos2;}
+  });
+
+  D.rivales=D.rivales||[];
+  var r=D.rivales.find(function(x){return normalizar(x.nombre)===normalizar(eq);});
+  if(r){r.jugadores=jugadores;r.f=hoy();}
+  else D.rivales.push({id:id(),nombre:eq,jugadores:jugadores,f:hoy()});
+
+  var sobre=jugadores.filter(function(j){return sobrepago(j)>0;}).length;
+  document.getElementById('rNombre').value='';
+  document.getElementById('rTexto').value='';
+  guardar();pintar();
+  out.innerHTML='<div class="card" style="margin-top:12px"><div class="row1"><div class="who">'+
+    '<b>'+jugadores.length+' jugadores en '+esc(eq)+'</b><small>'+modo+
+    (sobre?' · '+sobre+' sobrepagados':'')+'</small></div></div></div>';
+}
+
+function quitarRival(rid){
+  if(!confirm('¿Borrar esta plantilla rival?'))return;
+  D.rivales=(D.rivales||[]).filter(function(x){return x.id!==rid});
+  guardar();pintarLiga();
+}
+function pintarLiga(){
+  var res=document.getElementById('resumenLiga');
+    var lst=document.getElementById('listaRivales');
+  var rivales=D.rivales||[];
+  if(!rivales.length){
+    res.innerHTML='';
+    lst.innerHTML='<div class="empty">Todavía no hay plantillas rivales.<br>Empieza por una y ve añadiendo el resto.</div>';
+    return;
+  }
+  var total=rivales.reduce(function(a,r){return a+r.jugadores.length},0);
+  var poder=D.saldo+D.plantilla.reduce(function(a,j){return a+j.valor},0);
+  res.innerHTML='<div class="card"><div class="row1"><div class="who"><b>'+rivales.length+' rivales · '+total+' jugadores fichados</b>'+
+    '<small>tu poder de compra: '+eur(poder)+'</small></div></div></div>';
+
+  lst.innerHTML='<p class="hint" style="margin-top:16px"><b>Plantillas</b></p>'+rivales.map(function(r){
+    return '<details><summary>'+esc(r.nombre)+' · '+r.jugadores.length+' jug.</summary>'+
+      r.jugadores.map(function(j){
+        var sp=sobrepago(j);
+        return '<div class="chg">'+posHTML(j)+
+          '<div class="who"><b>'+esc(j.nombre)+'</b><small class="muted mono">'+eur(j.valor)+
+          ' · cl '+eur(clausulaDe(j))+(j.deposito?' <span class="up">blindado</span>':'')+
+          (sp?' <span class="down">(+'+eur(sp)+' pagado de más)</span>':'')+'</small></div>'+
+          (j.dias?'<span class="racha muted">'+j.dias+'d</span>':'')+
+        '</div>';
+      }).join('')+
+      '<button class="btn ghost" style="margin-top:10px" onclick="quitarRival(\''+r.id+'\')">Borrar este equipo</button>'+
+    '</details>';
+  }).join('');
+}
+/* Busca en qué equipo rival está un jugador */
+function duenoDe(nombre){
+  var k=normalizar(nombre),res=null;
+  (D.rivales||[]).forEach(function(r){
+    r.jugadores.forEach(function(j){ if(normalizar(j.nombre)===k) res=r.nombre; });
+  });
+  return res;
+}
+
+/* ============ Movimientos ============ */
+function pintarMovs(){
+  var r=document.getElementById('resumenMovs'),c=document.getElementById('listaMovs');
+  if(!D.movimientos.length){r.innerHTML='';c.innerHTML='<div class="empty">Todavía no has vendido a nadie.</div>';return;}
+  var total=D.movimientos.reduce(function(a,m){return a+m.benef},0);
+  var buenas=D.movimientos.filter(function(m){return m.benef>0}).length;
+  r.innerHTML='<div class="card"><div class="row1"><div class="who"><b>Balance de mercado</b>'+
+    '<small>'+buenas+' de '+D.movimientos.length+' ventas en positivo</small></div>'+
+    '<div class="delta"><b class="'+(total>=0?'up':'down')+'">'+signo(total)+'</b></div></div></div>';
+  c.innerHTML=D.movimientos.map(function(m){
+    return '<div class="card"><div class="row1">'+
+      '<div class="who"><b>'+esc(m.nombre)+'</b><small>'+m.f+'</small></div>'+
+      '<div class="delta"><b class="'+(m.benef>=0?'up':'down')+'">'+signo(m.benef)+'</b>'+
+      '<small class="muted">'+eur(m.compra)+' → '+eur(m.venta)+'</small></div></div></div>';
+  }).join('');
+}
+
+/* ============ Notas ============ */
+function addNota(){
+  var t=document.getElementById('notaTexto').value.trim();
+  if(!t){aviso('Escribe algo primero');return;}
+  D.notas.unshift({id:id(),f:hoy(),jor:num(document.getElementById('notaJor').value)||D.jornada,texto:t});
+  document.getElementById('notaTexto').value='';
+  guardar();pintar();aviso('Nota guardada');
+}
+function quitarNota(nid){D.notas=D.notas.filter(function(x){return x.id!==nid});guardar();pintar();}
+function pintarNotas(){
+  var c=document.getElementById('listaNotas');
+  if(!D.notas.length){c.innerHTML='<div class="empty">Sin notas todavía.</div>';return;}
+  c.innerHTML=D.notas.map(function(n){
+    return '<div class="card"><div class="row1"><div class="who"><b>Jornada '+n.jor+'</b><small>'+n.f+'</small></div>'+
+      '<span class="acts"><button onclick="quitarNota(\''+n.id+'\')">✕</button></span></div>'+
+      '<div class="row2"><s style="white-space:pre-wrap;font-family:Archivo,sans-serif;font-size:13px;line-height:1.5">'+esc(n.texto)+'</s></div></div>';
+  }).join('');
+}
+
+/* ============ Informe para el analista ============ */
+/* Media de puntos por partido, tomada del registro global */
+function mediaTxt(nombre){
+  var j=(D.jugadores||{})[normalizar(nombre)];
+  if(!j||!j.pj)return '';
+  return ' | media '+(j.media||0).toFixed(1)+' en '+j.pj+'j';
+}
+function construirInforme(){
+  var valEq=D.plantilla.reduce(function(a,j){return a+j.valor},0);
+  var invertido=D.plantilla.reduce(function(a,j){return a+j.compra},0);
+  var plus=valEq-invertido;
+  var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
+  var L=[];
+  L.push('INFORME BIWENGER V16 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
+  L.push('Plusvalía latente '+signo(plus)+' | Beneficio realizado en ventas '+signo(benef));
+  L.push('');
+  L.push('PLANTILLA ('+D.plantilla.length+')');
+  var orden={POR:0,DEF:1,MED:2,DEL:3};
+  D.plantilla.slice().sort(function(a,b){return orden[a.pos]-orden[b.pos]}).forEach(function(j){
+    var d=j.valor-j.compra,t='';
+    var dia=j.delta||0;
+    if(!dia&&j.hist&&j.hist.length>1) dia=j.hist[j.hist.length-1].v-j.hist[j.hist.length-2].v;
+    if(dia) t=' | HOY '+signo(dia);
+    var r=racha(j);
+    if(r.n>1) t+=' ('+r.n+' días '+(r.dir>0?'subiendo':'bajando')+')';
+    L.push('- '+j.nombre+' ('+etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):'')+(j.equipo?', '+j.equipo:'')+') | compra '+eur(j.compra)+' | hoy '+eur(j.valor)+' | '+signo(d)+' ('+(d>0?'+':'')+pct(d,j.compra)+'%) | '+j.puntos+' pts'+mediaTxt(j.nombre)+t);
+  });
+  if(D.mercado.length){
+    L.push('');L.push('MERCADO DE FICHAJES DE HOY');
+    D.mercado.forEach(function(m){
+      var rm=racha(m),tm='';
+      if(m.delta) tm=' | HOY '+signo(m.delta);
+      if(rm.n>1) tm+=' ('+rm.n+' días '+(rm.dir>0?'subiendo':'bajando')+')';
+      L.push('- '+m.nombre+(m.pos?' ('+etiq(m.pos)+(m.pos2?'/'+etiq(m.pos2):'')+')':'')+' | '+eur(m.valor)+' | '+(m.puntos||0)+' pts'+(m.pujas?' | '+m.pujas+' pujas':' | sin pujas')+(m.objetivo?' | objetivo ≤'+eur(m.objetivo):'')+' | '+m.estado+tm+(m.nota?' | '+m.nota:''));
+    });
+  }
+  var rivales=D.rivales||[];
+  if(rivales.length){
+    L.push('');L.push('LIGA · '+rivales.length+' RIVALES');
+    rivales.forEach(function(r){
+      L.push('');
+      L.push(r.nombre+' ('+r.jugadores.length+' jug.)');
+      r.jugadores.slice().sort(function(a,b){return b.valor-a.valor}).forEach(function(j){
+        var sp=sobrepago(j);
+        L.push('  · '+j.nombre+(j.pos?' ('+etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):'')+')':'')+
+          ' | vale '+eur(j.valor)+' | pagó '+eur(j.pagado||j.valor)+' | cláusula '+eur(clausulaDe(j))+
+          ' | '+(j.puntos||0)+' pts'+mediaTxt(j.nombre)+(sp?' | sobrepagó '+eur(sp):''));
+      });
+    });
+  }
+  if(D.movimientos.length){
+    L.push('');L.push('ÚLTIMOS MOVIMIENTOS');
+    D.movimientos.slice(0,8).forEach(function(m){
+      L.push('- '+m.f+' vendido '+m.nombre+': '+eur(m.compra)+' → '+eur(m.venta)+' ('+signo(m.benef)+')');
+    });
+  }
+  if(D.notas.length){
+    L.push('');L.push('TU ÚLTIMA RECOMENDACIÓN (J'+D.notas[0].jor+')');
+    L.push(D.notas[0].texto);
+  }
+  return L.join('\n');
+}
+function copiarInforme(){
+  var t=construirInforme();
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){aviso('Informe copiado')},function(){pedirCopia(t)});
+  }else pedirCopia(t);
+}
+function pedirCopia(t){
+  var ta=document.createElement('textarea');
+  ta.value=t;ta.style.cssText='position:fixed;top:10%;left:5%;width:90%;height:70%;z-index:999';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');aviso('Informe copiado');}catch(e){aviso('Selecciona y copia a mano');}
+  setTimeout(function(){ta.remove()},400);
+}
+
+/* ============ Copia de seguridad ============ */
+function descargarCopia(){
+  var b=new Blob([JSON.stringify(D)],{type:'application/json'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(b);a.download='biwenger-'+hoy()+'.json';a.click();
+  aviso('Copia descargada');
+}
+function restaurarCopia(){
+  var t=document.getElementById('restaurarTexto').value.trim();
+  if(!t){aviso('Pega la copia primero');return;}
+  try{
+    D=Object.assign({saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}},JSON.parse(t));
+    guardar();pintar();document.getElementById('restaurarTexto').value='';aviso('Temporada restaurada');
+  }catch(e){aviso('Esa copia no es válida');}
+}
+function borrarTodo(){
+  if(!confirm('Se borra la temporada entera. Las posiciones aprendidas se conservan. ¿Seguro?'))return;
+  var pos=D.posiciones||{};
+  D={saldo:0,jornada:1,plantilla:[],mercado:[],movimientos:[],notas:[],posiciones:pos};
+  guardar();pintar();aviso('Temporada borrada');
+}
+
+/* ============ Pintado global ============ */
+/* Estado de las tres fuentes. El tablón cambia todo el rato porque recoge
+   cada movimiento de la liga; los dos CSV solo cambian una vez al día. */
+function horasDesde(iso){
+  if(!iso)return null;
+  return Math.floor((Date.now()-new Date(iso).getTime())/3600000);
+}
+function pintarFuentes(){
+  var c=document.getElementById('fuentes');
+  if(!c)return;
+  var u=D.ultimo||{};
+  function chip(clave,titulo,vivo){
+    var t=u[clave];
+    var hoyMismo=t&&t.slice(0,10)===hoy();
+    var hs=horasDesde(t);
+    var estado,cls;
+    if(!t){estado='nunca';cls='pend';}
+    else if(vivo){
+      estado=hs<1?'hace menos de 1h':'hace '+hs+'h';
+      cls=hs>=6?'pend':'vivo';
+    }else{
+      estado=hoyMismo?'hoy':'hace '+(hs>=24?Math.floor(hs/24)+'d':hs+'h');
+      cls=hoyMismo?'ok':'pend';
+    }
+    return '<div class="fte '+cls+'"><b>'+titulo+'</b><small>'+estado+'</small></div>';
+  }
+  c.className='fuentes';
+  c.innerHTML=chip('tablon','Texto Bruto Tablón',true)+chip('mercado','CSV Mercado',false)+chip('liga','CSV Jugadores',false);
+}
+function marcarFuente(clave){
+  D.ultimo=D.ultimo||{};
+  D.ultimo[clave]=new Date().toISOString();
+}
+function pintar(){
+  var valEq=D.plantilla.reduce(function(a,j){return a+j.valor},0);
+  var invertido=D.plantilla.reduce(function(a,j){return a+j.compra},0);
+  var plus=valEq-invertido;
+  document.getElementById('valEquipo').textContent=eur(valEq);
+  var p=document.getElementById('plusTotal');
+  p.textContent=signo(plus);p.className=plus>0?'up':(plus<0?'down':'muted');
+  document.getElementById('jorLabel').textContent='J'+D.jornada;
+  var s=document.getElementById('saldo');
+  s.style.color=D.saldo<0?'var(--down)':'var(--gold)';
+  if(document.activeElement!==s) s.value=D.saldo?eur(D.saldo):'';
+  document.getElementById('jornadaInput').value=D.jornada;
+  document.getElementById('miEquipo').value=D.miEquipo||'';
+  pintarFuentes();
+  sincronizarJugadores();
+  pintarPlantilla();pintarCambios();pintarLiga();pintarMovLiga();pintarJugadores();pintarMercado();pintarMovs();pintarNotas();
+}
+
+document.getElementById('saldo').addEventListener('focus',function(){
+  this.value=D.saldo?(D.saldo/1e6).toFixed(2).replace(/0$/,'').replace(/[.,]$/,'').replace('.',','):'';
+  this.select();
+});
+document.getElementById('saldo').addEventListener('blur',function(){
+  D.saldo=num(this.value);guardar();pintar();
+});
+document.getElementById('miEquipo').addEventListener('change',function(){
+  D.miEquipo=this.value.trim();guardar();aviso('Equipo propio guardado');
+});
+document.getElementById('jornadaInput').addEventListener('change',function(){
+  D.jornada=num(this.value)||1;guardar();pintar();
+});
+
+/* ============ Cargar archivo ============ */
+function leerArchivo(f){
+  if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    document.getElementById('csvTexto').value=r.result;
+    aviso('Archivo cargado: '+f.name);
+    importarCSV();
+  };
+  r.onerror=function(){aviso('No he podido leer el archivo');};
+  r.readAsText(f,'UTF-8');
+}
+var drop=document.getElementById('drop');
+document.getElementById('csvFile').addEventListener('change',function(){leerArchivo(this.files[0]);this.value='';});
+drop.addEventListener('click',function(e){if(e.target.tagName!=='U')document.getElementById('csvFile').click();});
+['dragenter','dragover'].forEach(function(ev){
+  drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.add('over');});
+});
+['dragleave','drop'].forEach(function(ev){
+  drop.addEventListener(ev,function(e){e.preventDefault();drop.classList.remove('over');});
+});
+drop.addEventListener('drop',function(e){leerArchivo(e.dataTransfer.files[0]);});
+
+cargar();pintar();
+setInterval(function(){pintarCierre();pintarFuentes();},60000);
+</script>
+</body>
+</html>
