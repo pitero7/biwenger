@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V18</title>
+<title>Cuaderno de mercado · Biwenger V21</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel">J1</span><span class="ver">V18</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel">J1</span><span class="ver">V21</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -404,7 +404,7 @@ details > *:first-child + *{margin-top:12px}
 <script>
 /* ============ Almacén ============ */
 var KEY='biwenger-cuaderno-v1';
-var D={saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}};
+var D={saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}};
 var memoria=null;
 
 function guardar(){
@@ -1273,7 +1273,7 @@ function importarActividad(){
      para que el último movimiento de cada jugador sea el que manda. */
   entradas.reverse();
 
-  var altas=0,bajas=0,posAprendidas=0,propios=0,misCompras=0,misVentas=0,detalle=[];
+  var altas=0,bajas=0,posAprendidas=0,propios=0,misCompras=0,misVentas=0,blindajes=0,detalle=[];
   entradas.forEach(function(e){
     if(e.pos.length>1){recordarPos(e.nombre,e.pos[0],e.pos[1]);posAprendidas++;}
     var antes=duenoActual(e.nombre);
@@ -1282,6 +1282,33 @@ function importarActividad(){
     var esMio=eraMio(e.nombre);
     var mioAqui=(mio&&e.equipo&&normalizar(e.equipo)===mio);
 
+    /* Blindaje: el jugador no cambia de dueño, solo sube su cláusula. El
+       depósito se deduce de la cláusula anunciada, que es el dato fiable. */
+    if(e.tipo==='deposito'){
+      var obj=null;
+      D.plantilla.forEach(function(p){if(normalizar(p.nombre)===normalizar(e.nombre))obj=p;});
+      (D.rivales||[]).forEach(function(r2){r2.jugadores.forEach(function(p){
+        if(normalizar(p.nombre)===normalizar(e.nombre))obj=p;});});
+      /* El depósito es una cantidad que SE SUMA al blindaje, no una cláusula
+         final: si el jugador sube de valor después, el blindaje sigue intacto
+         encima. Y como el mismo anuncio reaparece en el tablón durante días,
+         cada uno se procesa una sola vez. */
+      var clave='dep|'+normalizar(e.nombre)+'|'+(e.deposito||0)+'|'+(e.nuevaClausula||0);
+      D.eventos=D.eventos||{};
+      var repetido=!!D.eventos[clave];
+      if(obj&&!repetido){
+        var baseSD=Math.max(obj.valor||0,obj.pagado||obj.compra||0);
+        if(e.deposito) obj.deposito=(obj.deposito||0)+e.deposito;
+        else if(e.nuevaClausula) obj.deposito=Math.max(0,Math.round(e.nuevaClausula/FACTOR)-baseSD);
+        var regD=(D.jugadores||{})[normalizar(e.nombre)];
+        if(regD)regD.deposito=obj.deposito;
+        D.eventos[clave]=hoy();
+        blindajes++;
+      }
+      detalle.push({t:'deposito',n:e.nombre,de:e.equipo||antes,a:null,
+                    p:e.nuevaClausula||e.deposito,repetido:repetido});
+      return;
+    }
     if(e.tipo==='fuera'){
       if(esMio)sacarDeMiPlantilla(e.nombre,0,false);
       if(quitarDeTodos(e.nombre))bajas++;
@@ -1341,7 +1368,7 @@ function importarActividad(){
     '<b>'+altas+' altas · '+bajas+' salidas</b><small>'+
     entradas.length+' movimientos leídos · '+posAprendidas+' multiposiciones'+
     (misCompras?' · '+misCompras+' fichajes tuyos añadidos':'')+
-    (misVentas?' · '+misVentas+' ventas tuyas registradas':'')+'</small></div></div></div>'+
+    (misVentas?' · '+misVentas+' ventas tuyas registradas':'')+(blindajes?' · '+blindajes+' cláusulas blindadas':'')+'</small></div></div></div>'+
     '<p class="hint" style="margin-top:12px">Revisa abajo que lo haya interpretado bien.</p>';
 }
 
@@ -1350,11 +1377,13 @@ function pintarMovLiga(){
   if(!c)return;
   var m=D.movLiga||[];
   if(!m.length){c.innerHTML='';return;}
-  var icono={compra:'→',venta:'✕',clausulazo:'⚡',fuera:'⊘'};
-  var color={compra:'up',venta:'down',clausulazo:'',fuera:'muted'};
+  var icono={compra:'→',venta:'✕',clausulazo:'⚡',fuera:'⊘',deposito:'⛨'};
+  var color={compra:'up',venta:'down',clausulazo:'',fuera:'muted',deposito:'muted'};
   c.innerHTML='<p class="hint" style="margin-top:18px"><b>Lo que he entendido del tablón</b></p>'+
     m.slice(0,60).map(function(x){
-      var destino=x.t==='venta'?'al mercado':(x.t==='fuera'?'fuera de la competición':esc(x.a||'?'));
+      var destino=x.t==='venta'?'al mercado':
+                  (x.t==='fuera'?'fuera de la competición':
+                  (x.t==='deposito'?('blinda su cláusula'+(x.repetido?' · ya estaba aplicado':'')):esc(x.a||'?')));
       return '<div class="chg">'+
         '<span class="racha '+(color[x.t]||'')+'" style="min-width:18px">'+(icono[x.t]||'·')+'</span>'+
         '<div class="who"><b>'+esc(x.n)+(x.mio?' <span class="tag watch">tuyo</span>':'')+'</b>'+
@@ -1466,6 +1495,30 @@ function quitarRival(rid){
   D.rivales=(D.rivales||[]).filter(function(x){return x.id!==rid});
   guardar();pintarLiga();
 }
+/* Ajuste manual de cláusula. Si el movimiento del tablón se perdió, aquí se
+   escribe la cláusula que muestra Biwenger y la app deduce el blindaje. */
+function editarClausula(rid,nombre){
+  var r=(D.rivales||[]).find(function(x){return x.id===rid;});
+  if(!r)return;
+  var j=r.jugadores.find(function(p){return normalizar(p.nombre)===normalizar(nombre);});
+  if(!j)return;
+  var base=Math.max(j.valor||0,j.pagado||0);
+  var v=prompt('Cláusula de '+j.nombre+' según Biwenger.\n'+
+               'Sin blindaje serían '+eur(Math.round(base*FACTOR))+'.\n'+
+               'Escríbela corta: 5,5 son 5,5M',
+               (clausulaDe(j)/1e6).toFixed(2).replace('.',','));
+  if(v===null)return;
+  var cl=num(v);
+  if(!cl){j.deposito=0;}
+  else{
+    var dep=Math.round(cl/FACTOR)-base;
+    j.deposito=Math.max(0,dep);
+  }
+  var reg=(D.jugadores||{})[normalizar(j.nombre)];
+  if(reg)reg.deposito=j.deposito;
+  guardar();pintar();
+  aviso(j.deposito?'Blindado con '+eur(j.deposito):'Blindaje quitado');
+}
 function pintarLiga(){
   var res=document.getElementById('resumenLiga');
     var lst=document.getElementById('listaRivales');
@@ -1488,7 +1541,9 @@ function pintarLiga(){
           '<div class="who"><b>'+esc(j.nombre)+'</b><small class="muted mono">'+eur(j.valor)+
           ' · cl '+eur(clausulaDe(j))+(j.deposito?' <span class="up">blindado</span>':'')+
           (sp?' <span class="down">(+'+eur(sp)+' pagado de más)</span>':'')+'</small></div>'+
-          (j.dias?'<span class="racha muted">'+j.dias+'d</span>':'')+
+          '<button onclick="editarClausula(\''+r.id+'\',\''+esc(j.nombre).replace(/'/g,"")+'\')" '+
+          'style="background:none;border:1px solid var(--line);color:var(--muted);'+
+          'font-family:inherit;font-size:10px;padding:3px 8px;border-radius:7px;cursor:pointer">cláusula</button>'+
         '</div>';
       }).join('')+
       '<button class="btn ghost" style="margin-top:10px" onclick="quitarRival(\''+r.id+'\')">Borrar este equipo</button>'+
@@ -1553,7 +1608,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V18 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V21 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   L.push('Plusvalía latente '+signo(plus)+' | Beneficio realizado en ventas '+signo(benef));
   L.push('');
@@ -1628,7 +1683,7 @@ function restaurarCopia(){
   var t=document.getElementById('restaurarTexto').value.trim();
   if(!t){aviso('Pega la copia primero');return;}
   try{
-    D=Object.assign({saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}},JSON.parse(t));
+    D=Object.assign({saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}},JSON.parse(t));
     guardar();pintar();document.getElementById('restaurarTexto').value='';aviso('Temporada restaurada');
   }catch(e){aviso('Esa copia no es válida');}
 }
