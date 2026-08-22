@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V23</title>
+<title>Cuaderno de mercado · Biwenger V27</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel">J1</span><span class="ver">V23</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V27</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -315,6 +315,13 @@ details > *:first-child + *{margin-top:12px}
 
 <!-- LIGA -->
 <section id="tab-liga" hidden>
+  <details style="margin-bottom:14px">
+    <summary>Actualizar clasificación</summary>
+    <p class="hint">Copia la clasificación de Biwenger y pégala tal cual, al terminar cada jornada.</p>
+    <div class="field"><textarea id="clasTexto" rows="6" placeholder="1º&#10;supercarmela&#10;48 puntos"></textarea></div>
+    <button class="btn" onclick="importarClasificacion()">Guardar clasificación</button>
+    <div id="clasResultado"></div>
+  </details>
   <div id="resumenLiga"></div>
   <div id="listaRivales"></div>
   <details style="margin-top:14px">
@@ -404,7 +411,7 @@ details > *:first-child + *{margin-top:12px}
 <script>
 /* ============ Almacén ============ */
 var KEY='biwenger-cuaderno-v1';
-var D={saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}};
+var D={saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},clasificacion:[],ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}};
 var memoria=null;
 
 function guardar(){
@@ -655,7 +662,17 @@ function importarCSV(){
   var cPJ=buscarCol(cab,['pj','partidos','games','apps']);
 
   var destino=document.getElementById('csvDestino').value;
-  var nuevos=0,actualizados=0,recordadas=0;
+  /* El máximo de partidos jugados de toda la liga = jornadas disputadas */
+  var maxPJ=0;
+  if(cPJ>-1){
+    for(var q=filaCab+1;q<lineas.length;q++){
+      var fq=partir(lineas[q],sep);
+      var pq=entero(fq[cPJ]);
+      if(pq>maxPJ)maxPJ=pq;
+    }
+  }
+  var jornadaLiga=jornadaDeLaLiga(maxPJ);
+  var nuevos=0,actualizados=0,recordadas=0,tocadosLiga=0;
   /* El mercado cambia entero cada día: se guarda el de ayer para comparar
      y arrancamos lista nueva con lo que traiga el CSV. */
   var mercadoAyer=[];
@@ -683,6 +700,8 @@ function importarCSV(){
       var pj=cPJ>-1?entero(f[cPJ]):0;
       var reg=registrar(nombre,{valor:valor,puntos:puntos,equipo:equipo,
                                 pos:pos,pos2:posInfo.pos2,media:isNaN(media)?0:media,pj:pj});
+      if(reg) anotarPuntosJornada(reg,puntos,pj,jornadaLiga);
+      tocadosLiga++;
       if(reg){
         var prev=reg.valorAyer||0;
         if(prev&&prev!==valor&&reg.fValor!==hoy()) anotarDelta(reg,valor-prev);
@@ -760,6 +779,7 @@ function importarCSV(){
     out.innerHTML='<div class="empty">He leído las columnas pero no había ninguna fila con datos debajo.</div>';
     return;
   }
+  if(destino==='liga'&&jornadaLiga)D.jornada=jornadaLiga;
   marcarFuente(destino==='liga'?'liga':(destino==='mercado'?'mercado':'plantilla'));
   guardar();pintar();
   document.getElementById('csvTexto').value='';
@@ -952,6 +972,53 @@ function entero(v){
   var n=parseInt(s,10);
   return isNaN(n)?0:n;
 }
+/* Puntos por jornada, deducidos solos del CSV de LaLiga.
+   Dos datos distintos que no hay que confundir:
+     - PJ dice SI el jugador ha jugado (es su contador de apariciones, así que
+       un suplente que debuta en la J7 pasa de 0 a 1: no es "su jornada 1").
+     - La jornada de la liga dice CUÁNDO. Se calcula como el máximo de PJ de
+       toda la liga, que equivale a las jornadas ya disputadas.
+   Así, si Ángel Ortiz debuta en la J7, sus puntos se anotan en la J7. */
+function jornadaDeLaLiga(maxPJ){
+  return maxPJ>0?maxPJ:1;
+}
+function anotarPuntosJornada(j,totalHoy,pj,jornada){
+  if(!jornada)return;
+  j.jor=j.jor||{};
+  if(j.pjPrev===undefined){
+    /* Primera vez que lo vemos: lo acumulado hasta hoy va en un solo bloque */
+    j.pjPrev=pj||0;j.totalPrev=totalHoy;
+    j.jornadaActual=jornada;j.baseActual=totalHoy;
+    j.desde=jornada;
+    if(totalHoy!==0||pj>0)j.jor[jornada]=totalHoy;
+    return;
+  }
+  var haJugado=(pj>j.pjPrev)||(totalHoy!==j.totalPrev);
+  if(j.jornadaActual!==jornada){
+    /* Jornada nueva: la base es lo que llevaba al cerrar la anterior */
+    j.baseActual=j.totalPrev;
+    j.jornadaActual=jornada;
+  }
+  if(haJugado||j.jor[jornada]!==undefined){
+    var d=totalHoy-j.baseActual;
+    if(d!==0||pj>j.pjPrev)j.jor[jornada]=d;
+  }
+  j.pjPrev=pj;j.totalPrev=totalHoy;
+}
+/* Últimas jornadas de un jugador, de la más reciente hacia atrás */
+function historialPuntos(j,n){
+  if(!j||!j.jor)return [];
+  return Object.keys(j.jor).map(Number).sort(function(a,b){return b-a;})
+    .slice(0,n||3).map(function(k){return {j:k,pts:j.jor[k],agrupado:(k===j.desde&&k>1)};});
+}
+function textoJornadas(j,n){
+  var hs=historialPuntos(j,n);
+  if(!hs.length)return '';
+  return hs.map(function(x){
+    /* El primer bloque agrupa lo anterior a la primera importación */
+    return x.agrupado?('J1-'+x.j+' '+x.pts):('J'+x.j+' '+x.pts);
+  }).join(' · ');
+}
 /* Los puntos se muestran siempre, incluidos el 0 y los negativos */
 function puntosTxt(p){
   var n=(p===undefined||p===null||p==='')?0:p;
@@ -1066,7 +1133,10 @@ function pintarJugadores(){
     return '<div class="card"><div class="row1">'+
       posHTML(j,'editarPosJugador(\''+x.k+'\')')+
       '<div class="who"><b>'+esc(j.nombre)+'</b><small>'+
-        (j.equipo?esc(j.equipo)+' · ':'')+quien+' · '+puntosTxt(j.puntos)+'</small></div>'+
+        (j.equipo?esc(j.equipo)+' · ':'')+quien+' · '+puntosTxt(j.puntos)+
+        (j.pj?' en '+j.pj+'j · media '+(j.media||0).toFixed(1):'')+
+        (textoJornadas(j,4)?'<br><span class="mono" style="font-size:10.5px">'+textoJornadas(j,4)+'</span>':'')+
+        '</small></div>'+
       '<div class="delta"><b>'+eur(j.valor)+'</b><small class="muted">cl '+eur(cl)+'</small></div>'+
       '</div>'+
       (sp?'<div class="row2"><s class="down">su dueño pagó '+eur(sp)+' de más</s></div>':'')+
@@ -1142,6 +1212,7 @@ function resolverSigno(mid,dir){
 
 /* ============ Rivales de la liga ============ */
 var FACTOR=1.5;
+var LIMITE_PLANTILLA=22;
 /* La cláusula es 1,5 x la base, y la base es el valor de mercado salvo que
    el dueño pagara más: entonces manda lo que pagó. */
 function baseDe(j){
@@ -1550,37 +1621,125 @@ function editarClausula(rid,nombre){
   guardar();pintar();
   aviso(j.deposito?'Blindado con '+eur(j.deposito):'Blindaje quitado');
 }
-function pintarLiga(){
-  var res=document.getElementById('resumenLiga');
-    var lst=document.getElementById('listaRivales');
-  var rivales=D.rivales||[];
-  if(!rivales.length){
-    res.innerHTML='';
-    lst.innerHTML='<div class="empty">Todavía no hay plantillas rivales.<br>Empieza por una y ve añadiendo el resto.</div>';
+/* Lee la clasificación tal cual se copia: la posición, el nombre y los puntos
+   pueden venir en la misma línea o en líneas seguidas. */
+function leerClasificacion(txt){
+  var L=txt.replace(/\[([^\]]*)\]\([^)]*\)/g,'$1')
+           .split(/\r?\n/).map(function(s){return s.replace(/^\s*[*\-•]\s+/,'').trim();})
+           .filter(function(s){return s;});
+  var out=[],i=0;
+  while(i<L.length){
+    var mp=L[i].match(/^(\d{1,2})\s*[ºo°.]?$/);
+    if(!mp){i++;continue;}
+    var pos=parseInt(mp[1],10);
+    /* El nombre puede ocupar una o dos líneas; los puntos llegan después */
+    var nombre='',puntos=null,j=i+1;
+    while(j<L.length&&j<=i+5){
+      /* "48 puntos" en el tablón, o solo "48" en la pantalla de clasificación */
+      var mpt=L[j].match(/^(-?\d[\d.]*)\s*puntos?\b/i);
+      if(mpt){puntos=parseInt(String(mpt[1]).replace(/\./g,''),10);break;}
+      if(nombre&&/^-?\d{1,4}$/.test(L[j])){puntos=parseInt(L[j],10);break;}
+      /* La siguiente posición corta el bloque, pero solo si ya hay nombre */
+      if(nombre&&/^\d{1,2}\s*[ºo°.]$/.test(L[j]))break;
+      if(/^[\d.]+\s*€$/.test(L[j])||/^[▲▼↑↓+-]?\d+$/.test(L[j])&&!nombre){j++;continue;}
+      nombre=nombre?nombre+' '+L[j]:L[j];
+      j++;
+    }
+    if(nombre&&puntos!==null){out.push({pos:pos,nombre:nombre.trim(),puntos:puntos});i=j+1;}
+    else i++;
+  }
+  return out;
+}
+function importarClasificacion(){
+  var txt=document.getElementById('clasTexto').value;
+  var out=document.getElementById('clasResultado');
+  if(!txt.trim()){aviso('Pega la clasificación');return;}
+  var lista=leerClasificacion(txt);
+  if(!lista.length){
+    out.innerHTML='<div class="empty">No he reconocido ninguna posición en ese texto.</div>';
     return;
   }
-  var total=rivales.reduce(function(a,r){return a+r.jugadores.length},0);
-  var poder=D.saldo+D.plantilla.reduce(function(a,j){return a+j.valor},0);
-  res.innerHTML='<div class="card"><div class="row1"><div class="who"><b>'+rivales.length+' rivales · '+total+' jugadores fichados</b>'+
-    '<small>tu poder de compra: '+eur(poder)+'</small></div></div></div>';
+  D.clasificacion=lista;
+  document.getElementById('clasTexto').value='';
+  guardar();pintar();
+  out.innerHTML='<div class="card" style="margin-top:12px"><div class="row1"><div class="who">'+
+    '<b>'+lista.length+' equipos actualizados</b><small>'+esc(lista[0].nombre)+' lidera con '+
+    lista[0].puntos+' puntos</small></div></div></div>';
+}
+/* Puntos de clasificación de un equipo, por nombre */
+function puntosEquipo(nombre){
+  var c=(D.clasificacion||[]).find(function(x){return normalizar(x.nombre)===normalizar(nombre);});
+  return c?c:null;
+}
+function pintarLiga(){
+  var res=document.getElementById('resumenLiga');
+  var lst=document.getElementById('listaRivales');
+  /* Mi equipo se muestra como uno más: mismo formato que los rivales */
+  var miNombre=D.miEquipo||'Mi equipo';
+  var equipos=(D.rivales||[]).map(function(r){
+    return {id:r.id,nombre:r.nombre,jugadores:r.jugadores,mio:false};
+  });
+  equipos.push({id:'__mio__',nombre:miNombre,mio:true,
+    jugadores:D.plantilla.map(function(p){
+      return {nombre:p.nombre,pos:p.pos,pos2:p.pos2,valor:p.valor,
+              pagado:p.compra,puntos:p.puntos,deposito:p.deposito||0};
+    })});
 
-  lst.innerHTML='<p class="hint" style="margin-top:16px"><b>Plantillas</b></p>'+rivales.map(function(r){
-    return '<details><summary>'+esc(r.nombre)+' · '+r.jugadores.length+' jug.</summary>'+
-      r.jugadores.map(function(j){
-        var sp=sobrepago(j);
-        return '<div class="chg">'+posHTML(j)+
-          '<div class="who"><b>'+esc(j.nombre)+'</b><small class="muted mono">'+eur(j.valor)+
-          ' · cl '+eur(clausulaDe(j))+(j.deposito?' <span class="up">blindado</span>':'')+
-          (sp?' <span class="down">(+'+eur(sp)+' pagado de más)</span>':'')+'</small></div>'+
-          '<button onclick="editarClausula(\''+r.id+'\',\''+esc(j.nombre).replace(/'/g,"")+'\')" '+
-          'style="background:none;border:1px solid var(--line);color:var(--muted);'+
-          'font-family:inherit;font-size:10px;padding:3px 8px;border-radius:7px;cursor:pointer">cláusula</button>'+
-        '</div>';
-      }).join('')+
-      '<button class="btn ghost" style="margin-top:10px" onclick="quitarRival(\''+r.id+'\')">Borrar este equipo</button>'+
-    '</details>';
+  if(equipos.length===1&&!D.plantilla.length){
+    res.innerHTML='';
+    lst.innerHTML='<div class="empty">Todavía no hay plantillas.<br>Pega el tablón o carga los rivales.</div>';
+    return;
+  }
+  /* Orden: por clasificación si la tenemos; si no, por valor de plantilla */
+  equipos.forEach(function(e){
+    var c=puntosEquipo(e.nombre);
+    e.pts=c?c.puntos:null;
+    e.pos=c?c.pos:null;
+    e.valor=e.jugadores.reduce(function(a,j){return a+(j.valor||0)},0);
+  });
+  var hayClas=equipos.some(function(e){return e.pos!==null;});
+  equipos.sort(function(a,b){
+    if(hayClas){
+      if(a.pos===null)return 1;
+      if(b.pos===null)return -1;
+      return a.pos-b.pos;
+    }
+    return b.valor-a.valor;
+  });
+
+  var total=equipos.reduce(function(a,e){return a+e.jugadores.length},0);
+  var lider=hayClas?equipos[0]:null;
+  res.innerHTML='<div class="card"><div class="row1"><div class="who">'+
+    '<b>'+equipos.length+' equipos · '+total+' jugadores</b><small>'+
+    (lider?'lidera '+esc(lider.nombre)+' con '+lider.pts+' pts':'sin clasificación cargada')+
+    '</small></div></div></div>';
+
+  lst.innerHTML=equipos.map(function(e){
+    var lleno=e.jugadores.length>=LIMITE_PLANTILLA;
+    var cab='<summary>'+
+      (e.pos?'<span class="racha muted">'+e.pos+'º</span> ':'')+
+      esc(e.nombre)+(e.mio?' <span class="tag watch">tú</span>':'')+
+      (e.pts!==null?' · <span class="'+(e.mio?'':'muted')+'">'+e.pts+' pts</span>':'')+
+      ' · <span class="muted">'+e.jugadores.length+'/'+LIMITE_PLANTILLA+'</span>'+
+      (lleno?' <span class="down">lleno</span>':'')+
+      ' · <span class="muted">'+eur(e.valor)+'</span>'+
+      '</summary>';
+    var cuerpo=e.jugadores.slice().sort(function(a,b){return b.valor-a.valor}).map(function(j){
+      var sp=sobrepago(j);
+      return '<div class="chg">'+posHTML(j)+
+        '<div class="who"><b>'+esc(j.nombre)+'</b><small class="muted mono">'+eur(j.valor)+
+        ' · cl '+eur(clausulaDe(j))+(j.deposito?' <span class="up">blindado</span>':'')+
+        (sp?' <span class="down">(+'+eur(sp)+' de más)</span>':'')+' · '+puntosTxt(j.puntos)+'</small></div>'+
+        (e.mio?'':'<button onclick="editarClausula(\''+e.id+'\',\''+esc(j.nombre).replace(/\'/g,"")+'\')" '+
+        'style="background:none;border:1px solid var(--line);color:var(--muted);'+
+        'font-family:inherit;font-size:10px;padding:3px 8px;border-radius:7px;cursor:pointer">cláusula</button>')+
+      '</div>';
+    }).join('');
+    var pie=e.mio?'':'<button class="btn ghost" style="margin-top:10px" onclick="quitarRival(\''+e.id+'\')">Borrar este equipo</button>';
+    return '<details'+(e.mio?' open':'')+'>'+cab+cuerpo+pie+'</details>';
   }).join('');
 }
+
 /* Busca en qué equipo rival está un jugador */
 function duenoDe(nombre){
   var k=normalizar(nombre),res=null;
@@ -1628,6 +1787,11 @@ function pintarNotas(){
 
 /* ============ Informe para el analista ============ */
 /* Media de puntos por partido, tomada del registro global */
+function jornadasTxt(nombre){
+  var j=(D.jugadores||{})[normalizar(nombre)];
+  var t=textoJornadas(j,4);
+  return t?' | '+t:'';
+}
 function mediaTxt(nombre){
   var j=(D.jugadores||{})[normalizar(nombre)];
   if(!j||!j.pj)return '';
@@ -1639,8 +1803,10 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V23 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V27 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
+  L.push('Plantilla '+D.plantilla.length+'/'+LIMITE_PLANTILLA+
+         (D.plantilla.length>=LIMITE_PLANTILLA?' (LLENA: hay que vender antes de fichar)':''));
   L.push('Plusvalía latente '+signo(plus)+' | Beneficio realizado en ventas '+signo(benef));
   L.push('');
   L.push('PLANTILLA ('+D.plantilla.length+')');
@@ -1652,7 +1818,7 @@ function construirInforme(){
     if(dia) t=' | HOY '+signo(dia);
     var r=racha(j);
     if(r.n>1) t+=' ('+r.n+' días '+(r.dir>0?'subiendo':'bajando')+')';
-    L.push('- '+j.nombre+' ('+etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):'')+(j.equipo?', '+j.equipo:'')+') | compra '+eur(j.compra)+' | hoy '+eur(j.valor)+' | '+signo(d)+' ('+(d>0?'+':'')+pct(d,j.compra)+'%) | '+j.puntos+' pts'+mediaTxt(j.nombre)+t);
+    L.push('- '+j.nombre+' ('+etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):'')+(j.equipo?', '+j.equipo:'')+') | compra '+eur(j.compra)+' | hoy '+eur(j.valor)+' | '+signo(d)+' ('+(d>0?'+':'')+pct(d,j.compra)+'%) | '+j.puntos+' pts'+mediaTxt(j.nombre)+jornadasTxt(j.nombre)+t);
   });
   if(D.mercado.length){
     L.push('');L.push('MERCADO DE FICHAJES DE HOY');
@@ -1661,6 +1827,14 @@ function construirInforme(){
       if(m.delta) tm=' | HOY '+signo(m.delta);
       if(rm.n>1) tm+=' ('+rm.n+' días '+(rm.dir>0?'subiendo':'bajando')+')';
       L.push('- '+m.nombre+(m.pos?' ('+etiq(m.pos)+(m.pos2?'/'+etiq(m.pos2):'')+')':'')+' | '+eur(m.valor)+' | '+(m.puntos||0)+' pts'+(m.pujas?' | '+m.pujas+' pujas':' | sin pujas')+(m.objetivo?' | objetivo ≤'+eur(m.objetivo):'')+' | '+m.estado+tm+(m.nota?' | '+m.nota:''));
+    });
+  }
+  var clas=D.clasificacion||[];
+  if(clas.length){
+    L.push('');L.push('CLASIFICACIÓN');
+    clas.forEach(function(c){
+      var yo=normalizar(c.nombre)===normalizar(D.miEquipo||'')?'  <-- YO':'';
+      L.push('  '+c.pos+'º '+c.nombre+' — '+c.puntos+' pts'+yo);
     });
   }
   var rivales=D.rivales||[];
@@ -1673,7 +1847,7 @@ function construirInforme(){
         var sp=sobrepago(j);
         L.push('  · '+j.nombre+(j.pos?' ('+etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):'')+')':'')+
           ' | vale '+eur(j.valor)+' | pagó '+eur(j.pagado||j.valor)+' | cláusula '+eur(clausulaDe(j))+
-          ' | '+(j.puntos||0)+' pts'+mediaTxt(j.nombre)+(sp?' | sobrepagó '+eur(sp):''));
+          ' | '+(j.puntos||0)+' pts'+mediaTxt(j.nombre)+jornadasTxt(j.nombre)+(sp?' | sobrepagó '+eur(sp):''));
       });
     });
   }
@@ -1714,7 +1888,7 @@ function restaurarCopia(){
   var t=document.getElementById('restaurarTexto').value.trim();
   if(!t){aviso('Pega la copia primero');return;}
   try{
-    D=Object.assign({saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}},JSON.parse(t));
+    D=Object.assign({saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},clasificacion:[],ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}},JSON.parse(t));
     guardar();pintar();document.getElementById('restaurarTexto').value='';aviso('Temporada restaurada');
   }catch(e){aviso('Esa copia no es válida');}
 }
@@ -1757,6 +1931,18 @@ function pintarFuentes(){
 function marcarFuente(clave){
   D.ultimo=D.ultimo||{};
   D.ultimo[clave]=new Date().toISOString();
+}
+/* La jornada manda sobre el reparto de puntos, así que se cambia desde la
+   cabecera antes de importar el CSV de la jornada nueva. */
+/* La jornada es solo una etiqueta para las notas: los puntos por partido se
+   deducen solos del contador PJ de cada jugador. Se actualiza sola al ver que
+   la mayoría de la liga ha jugado un partido más. */
+function cambiarJornada(){
+  var v=prompt('Jornada en curso (solo se usa como etiqueta en las notas)',D.jornada||1);
+  if(v===null)return;
+  var n=entero(v);
+  if(!n)return;
+  D.jornada=n;guardar();pintar();aviso('Jornada '+n);
 }
 function pintar(){
   var valEq=D.plantilla.reduce(function(a,j){return a+j.valor},0);
