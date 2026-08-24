@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V27</title>
+<title>Cuaderno de mercado · Biwenger V29</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V27</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V29</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -527,6 +527,19 @@ function tendencia(j){
   return s+'</s>';
 }
 
+/* Lo que pagaste de más al ganar la puja. Es coste de subasta, no una caída. */
+function primaDe(j){
+  var base=j.valorAlFichar||0;
+  if(!base)return 0;
+  return Math.max(0,(j.compra||0)-base);
+}
+/* Cómo se ha movido su valor desde que lo fichaste */
+function evolucionFichaje(j){
+  var reg=(D.jugadores||{})[normalizar(j.nombre)];
+  if(!reg)return null;
+  if(j.fFichaje) return evolucionDesde(reg,j.fFichaje);
+  return evolucionDias(reg,7);
+}
 function pintarPlantilla(){
   var c=document.getElementById('listaPlantilla');
   if(!D.plantilla.length){c.innerHTML='<div class="empty">Aún no hay jugadores.<br>Impórtalos desde el CSV o añádelos a mano.</div>';return;}
@@ -543,6 +556,13 @@ function pintarPlantilla(){
       '<div class="row2">'+
         '<span>compra <s>'+eur(j.compra)+'</s></span>'+
         '<span>hoy <s>'+eur(j.valor)+'</s></span>'+
+        (function(){
+          var p=primaDe(j),ev=evolucionFichaje(j),t='';
+          if(p)t+='<s class="muted">prima '+eur(p)+'</s>';
+          if(ev)t+='<s class="'+(ev.dif>0?'up':(ev.dif<0?'down':'muted'))+'">'+
+                   signo(ev.dif)+' en '+ev.dias+'d</s>';
+          return t;
+        })()+
         tendencia(j)+
         '<span class="acts">'+
           '<button onclick="editarCompra(\''+j.id+'\')">compra</button>'+
@@ -700,6 +720,7 @@ function importarCSV(){
       var pj=cPJ>-1?entero(f[cPJ]):0;
       var reg=registrar(nombre,{valor:valor,puntos:puntos,equipo:equipo,
                                 pos:pos,pos2:posInfo.pos2,media:isNaN(media)?0:media,pj:pj});
+      if(reg) anotarValor(reg,valor);
       if(reg) anotarPuntosJornada(reg,puntos,pj,jornadaLiga);
       tocadosLiga++;
       if(reg){
@@ -1018,6 +1039,56 @@ function textoJornadas(j,n){
     /* El primer bloque agrupa lo anterior a la primera importación */
     return x.agrupado?('J1-'+x.j+' '+x.pts):('J'+x.j+' '+x.pts);
   }).join(' · ');
+}
+/* Serie de valores de cada jugador, una entrada por día. De aquí salen el
+   cambio diario, las rachas y la evolución desde cualquier fecha. */
+function anotarValor(j,valor){
+  if(!valor)return;
+  j.vhist=j.vhist||[];
+  var f=hoy();
+  var ult=j.vhist.length?j.vhist[j.vhist.length-1]:null;
+  if(ult&&ult.f===f){ult.v=valor;}
+  else{
+    if(ult&&ult.v!==valor) anotarDelta(j,valor-ult.v);
+    j.vhist.push({f:f,v:valor});
+    if(j.vhist.length>120)j.vhist=j.vhist.slice(-120);
+  }
+}
+/* Días de calendario entre dos fechas: no todas las importaciones son
+   diarias, así que se cuentan días reales y nunca entradas de la serie. */
+function diasEntre(f1,f2){
+  var a=new Date(f1+'T00:00:00'),b=new Date(f2+'T00:00:00');
+  return Math.round((b-a)/86400000);
+}
+/* Cuánto se ha movido su valor desde una fecha concreta */
+function evolucionDesde(j,fecha){
+  if(!j||!j.vhist||!j.vhist.length)return null;
+  var base=null;
+  for(var i=0;i<j.vhist.length;i++){
+    if(j.vhist[i].f>=fecha){base=j.vhist[i];break;}
+  }
+  if(!base)return null;
+  var ahora=j.vhist[j.vhist.length-1];
+  if(base.f===ahora.f)return null;
+  return {desde:base.f,inicio:base.v,ahora:ahora.v,dif:ahora.v-base.v,
+          dias:diasEntre(base.f,ahora.f),lecturas:j.vhist.length-j.vhist.indexOf(base)-1};
+}
+/* Cambio de los últimos N días de calendario. Busca la lectura más antigua
+   dentro de la ventana; si no hay ninguna, devuelve la más cercana e informa
+   de los días que cubre en realidad. */
+function evolucionDias(j,n){
+  if(!j||!j.vhist||j.vhist.length<2)return null;
+  var ahora=j.vhist[j.vhist.length-1];
+  var base=null;
+  for(var i=j.vhist.length-2;i>=0;i--){
+    if(diasEntre(j.vhist[i].f,ahora.f)<=n)base=j.vhist[i];
+    else break;
+  }
+  if(!base)base=j.vhist[j.vhist.length-2];
+  var d=diasEntre(base.f,ahora.f);
+  if(d<=0)return null;
+  return {dif:ahora.v-base.v,dias:d,lecturas:j.vhist.length-1-j.vhist.indexOf(base),
+          hueco:d>(j.vhist.length-1-j.vhist.indexOf(base))};
 }
 /* Los puntos se muestran siempre, incluidos el 0 y los negativos */
 function puntosTxt(p){
@@ -1436,11 +1507,15 @@ function importarActividad(){
       if(!esMio){
         var g2=posGuardada(e.nombre);
         var reg2=(D.jugadores||{})[normalizar(e.nombre)];
+        /* Se guarda el valor de mercado del día para poder separar después
+           la prima de subasta de la evolución real del jugador. */
+        var valorMercado=(reg2&&reg2.valor)?reg2.valor:e.precio;
         D.plantilla.push({id:id(),nombre:e.nombre,
           pos:g2?g2.pos:(e.pos[0]||'MED'),pos2:g2?g2.pos2:(e.pos[1]||''),
           equipo:reg2?reg2.equipo:'',
-          compra:e.precio,valor:e.precio,puntos:reg2?reg2.puntos:0,
-          hist:[{f:hoy(),v:e.precio}],dhist:[]});
+          compra:e.precio,valor:valorMercado,puntos:reg2?reg2.puntos:0,
+          fFichaje:hoy(),valorAlFichar:valorMercado,
+          hist:[{f:hoy(),v:valorMercado}],dhist:[]});
         D.saldo-=e.precio;
         misCompras++;
       }
@@ -1792,6 +1867,29 @@ function jornadasTxt(nombre){
   var t=textoJornadas(j,4);
   return t?' | '+t:'';
 }
+/* Evolución de valor para el informe: cambio del día, últimos días y,
+   en mi plantilla, la prima pagada frente a lo que ha hecho desde entonces. */
+function evolucionTxt(nombre,jugadorPlantilla){
+  var reg=(D.jugadores||{})[normalizar(nombre)];
+  if(!reg)return '';
+  var t='';
+  var e3=evolucionDias(reg,3),e7=evolucionDias(reg,7);
+  if(e3&&e3.dias>=2)t+=' | '+signo(e3.dif)+' en '+e3.dias+'d';
+  if(e7&&e7.dias>e3.dias)t+=' | '+signo(e7.dif)+' en '+e7.dias+'d';
+  /* Si hubo días sin importar, el cambio diario no es comparable */
+  if(reg.vhist&&reg.vhist.length>1){
+    var u=reg.vhist[reg.vhist.length-1],p=reg.vhist[reg.vhist.length-2];
+    var salto=diasEntre(p.f,u.f);
+    if(salto>1)t+=' | ojo: última lectura cubre '+salto+' días';
+  }
+  if(jugadorPlantilla){
+    var p=primaDe(jugadorPlantilla);
+    if(p)t+=' | prima pagada '+eur(p);
+    var ev=evolucionFichaje(jugadorPlantilla);
+    if(ev)t+=' | desde que lo fiché '+signo(ev.dif);
+  }
+  return t;
+}
 function mediaTxt(nombre){
   var j=(D.jugadores||{})[normalizar(nombre)];
   if(!j||!j.pj)return '';
@@ -1803,7 +1901,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V27 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V29 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   L.push('Plantilla '+D.plantilla.length+'/'+LIMITE_PLANTILLA+
          (D.plantilla.length>=LIMITE_PLANTILLA?' (LLENA: hay que vender antes de fichar)':''));
@@ -1818,7 +1916,7 @@ function construirInforme(){
     if(dia) t=' | HOY '+signo(dia);
     var r=racha(j);
     if(r.n>1) t+=' ('+r.n+' días '+(r.dir>0?'subiendo':'bajando')+')';
-    L.push('- '+j.nombre+' ('+etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):'')+(j.equipo?', '+j.equipo:'')+') | compra '+eur(j.compra)+' | hoy '+eur(j.valor)+' | '+signo(d)+' ('+(d>0?'+':'')+pct(d,j.compra)+'%) | '+j.puntos+' pts'+mediaTxt(j.nombre)+jornadasTxt(j.nombre)+t);
+    L.push('- '+j.nombre+' ('+etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):'')+(j.equipo?', '+j.equipo:'')+') | compra '+eur(j.compra)+' | hoy '+eur(j.valor)+' | '+signo(d)+' ('+(d>0?'+':'')+pct(d,j.compra)+'%) | '+j.puntos+' pts'+mediaTxt(j.nombre)+jornadasTxt(j.nombre)+evolucionTxt(j.nombre,j)+t);
   });
   if(D.mercado.length){
     L.push('');L.push('MERCADO DE FICHAJES DE HOY');
@@ -1847,7 +1945,7 @@ function construirInforme(){
         var sp=sobrepago(j);
         L.push('  · '+j.nombre+(j.pos?' ('+etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):'')+')':'')+
           ' | vale '+eur(j.valor)+' | pagó '+eur(j.pagado||j.valor)+' | cláusula '+eur(clausulaDe(j))+
-          ' | '+(j.puntos||0)+' pts'+mediaTxt(j.nombre)+jornadasTxt(j.nombre)+(sp?' | sobrepagó '+eur(sp):''));
+          ' | '+(j.puntos||0)+' pts'+mediaTxt(j.nombre)+jornadasTxt(j.nombre)+evolucionTxt(j.nombre)+(sp?' | sobrepagó '+eur(sp):''));
       });
     });
   }
