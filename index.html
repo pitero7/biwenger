@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V35</title>
+<title>Cuaderno de mercado · Biwenger V36</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V35</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V36</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -1507,21 +1507,30 @@ function eraMio(nombre){
   return D.plantilla.some(function(p){return normalizar(p.nombre)===normalizar(nombre);});
 }
 /* Lo saca de mi plantilla; si fue venta, lo registra en Movimientos y suma el dinero */
-function sacarDeMiPlantilla(nombre,precio,esVenta){
+function sacarDeMiPlantilla(nombre,precio,esVenta,fecha){
   var j=D.plantilla.find(function(p){return normalizar(p.nombre)===normalizar(nombre);});
   if(!j)return false;
   if(esVenta){
-    var yaEsta=D.movimientos.some(function(m){
-      return normalizar(m.nombre)===normalizar(nombre)&&m.f===hoy()&&m.venta===precio;
-    });
-    if(!yaEsta){
-      D.movimientos.unshift({id:id(),f:hoy(),nombre:j.nombre,compra:j.compra,
-                             venta:precio,benef:precio-j.compra});
-      D.saldo+=precio;
-    }
+    D.movimientos.unshift({id:id(),f:fecha||hoy(),nombre:j.nombre,compra:j.compra,
+                           venta:precio,benef:precio-j.compra});
+    D.saldo+=precio;
   }
   D.plantilla=D.plantilla.filter(function(p){return normalizar(p.nombre)!==normalizar(nombre);});
   return true;
+}
+/* Cada movimiento que toca mi saldo o mi plantilla se marca al aplicarse.
+   Si el mismo movimiento reaparece en un tablón repetido o en un histórico
+   pegado de nuevo, se reconoce y se ignora en vez de aplicarse otra vez. */
+function claveMovimiento(prefijo,nombre,precio,fecha){
+  return prefijo+'|'+normalizar(nombre)+'|'+(precio||0)+'|'+(fecha||'');
+}
+function yaAplicado(clave){
+  D.eventos=D.eventos||{};
+  return !!D.eventos[clave];
+}
+function marcarAplicado(clave){
+  D.eventos=D.eventos||{};
+  D.eventos[clave]=hoy();
 }
 /* De dónde sale el jugador. Si el dueño anterior es el mismo que lo ficha,
    es que el movimiento ya se había importado antes: viene del mercado. */
@@ -1593,9 +1602,12 @@ function importarActividad(){
     }
     if(e.tipo==='venta'){
       if(esMio&&(mioAqui||!e.equipo)){
-        /* Vendido por mí: registra el movimiento y suma el dinero */
-        sacarDeMiPlantilla(e.nombre,e.precio,true);
-        misVentas++;
+        var claveV=claveMovimiento('miventa',e.nombre,e.precio,e.fecha);
+        if(!yaAplicado(claveV)){
+          sacarDeMiPlantilla(e.nombre,e.precio,true,e.fecha);
+          misVentas++;
+          marcarAplicado(claveV);
+        }
         detalle.push({t:'venta',n:e.nombre,de:(D.miEquipo||'Mi equipo'),a:null,p:e.precio,mio:true});
         return;
       }
@@ -1606,8 +1618,12 @@ function importarActividad(){
     if(e.tipo!=='compra'||!e.equipo)return;
     /* Si el jugador era mío y se lo lleva otro, cobro el importe */
     if(esMio&&!mioAqui){
-      sacarDeMiPlantilla(e.nombre,e.precio,true);
-      misVentas++;
+      var claveP=claveMovimiento('miventa',e.nombre,e.precio,e.fecha);
+      if(!yaAplicado(claveP)){
+        sacarDeMiPlantilla(e.nombre,e.precio,true,e.fecha);
+        misVentas++;
+        marcarAplicado(claveP);
+      }
       detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,
                     de:(D.miEquipo||'Mi equipo'),a:e.equipo,p:e.precio,mio:true});
       quitarDeTodos(e.nombre);
@@ -1625,19 +1641,23 @@ function importarActividad(){
     if(mioAqui){
       propios++;
       if(!esMio){
-        var g2=posGuardada(e.nombre);
-        var reg2=(D.jugadores||{})[normalizar(e.nombre)];
-        /* Se guarda el valor de mercado del día para poder separar después
-           la prima de subasta de la evolución real del jugador. */
-        var valorMercado=(reg2&&reg2.valor)?reg2.valor:e.precio;
-        D.plantilla.push({id:id(),nombre:e.nombre,
-          pos:g2?g2.pos:(e.pos[0]||'MED'),pos2:g2?g2.pos2:(e.pos[1]||''),
-          equipo:reg2?reg2.equipo:'',
-          compra:e.precio,valor:valorMercado,puntos:reg2?reg2.puntos:0,
-          fFichaje:e.fecha||hoy(),valorAlFichar:valorMercado,
-          hist:[{f:hoy(),v:valorMercado}],dhist:[]});
-        D.saldo-=e.precio;
-        misCompras++;
+        var claveC=claveMovimiento('micompra',e.nombre,e.precio,e.fecha);
+        if(!yaAplicado(claveC)){
+          var g2=posGuardada(e.nombre);
+          var reg2=(D.jugadores||{})[normalizar(e.nombre)];
+          /* Se guarda el valor de mercado del día para poder separar después
+             la prima de subasta de la evolución real del jugador. */
+          var valorMercado=(reg2&&reg2.valor)?reg2.valor:e.precio;
+          D.plantilla.push({id:id(),nombre:e.nombre,
+            pos:g2?g2.pos:(e.pos[0]||'MED'),pos2:g2?g2.pos2:(e.pos[1]||''),
+            equipo:reg2?reg2.equipo:'',
+            compra:e.precio,valor:valorMercado,puntos:reg2?reg2.puntos:0,
+            fFichaje:e.fecha||hoy(),valorAlFichar:valorMercado,
+            hist:[{f:hoy(),v:valorMercado}],dhist:[]});
+          D.saldo-=e.precio;
+          misCompras++;
+          marcarAplicado(claveC);
+        }
       }
       detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,
                     de:origenDe(e,antes),a:e.equipo,p:e.precio,mio:true});
@@ -2038,7 +2058,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V35 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V36 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   var protegidos=D.plantilla.filter(function(p){return p.fFichaje&&diasParaClausular({desde:p.fFichaje})>0;});
   if(protegidos.length){
