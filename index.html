@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V30</title>
+<title>Cuaderno de mercado · Biwenger V33</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V30</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V33</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -1381,7 +1381,15 @@ function leerTablon(txt){
       if(RE_SECCION.test(b))break;
       if(ancla(j)!==-1)break;
       if(/^ha abandonado/i.test(b)){e.tipo='fuera';break;}
-      if(/^fichado por/i.test(b)){e.tipo='compra';continue;}
+      /* "Fichado por" puede venir solo o con el equipo pegado en la misma
+         línea: "Fichado por Los Sobrinos de Florentino". */
+      var mfp=b.match(/^fichado por\s*(.*)$/i);
+      if(mfp){
+        e.tipo='compra';
+        var restoFP=mfp[1].trim();
+        if(restoFP&&!e.equipo)e.equipo=restoFP;
+        continue;
+      }
       var mv=b.match(/^vendido por\s+([\d.]+)/i);
       if(mv){e.tipo='venta';e.precio=num(mv[1]);continue;}
       var mp=b.match(/^por\s+([\d.]+)/i);
@@ -1442,6 +1450,13 @@ function sacarDeMiPlantilla(nombre,precio,esVenta){
   }
   D.plantilla=D.plantilla.filter(function(p){return normalizar(p.nombre)!==normalizar(nombre);});
   return true;
+}
+/* De dónde sale el jugador. Si el dueño anterior es el mismo que lo ficha,
+   es que el movimiento ya se había importado antes: viene del mercado. */
+function origenDe(e,antes){
+  if(e.vendedor)return e.vendedor;
+  if(antes&&e.equipo&&normalizar(antes)!==normalizar(e.equipo))return antes;
+  return null;
 }
 function importarActividad(){
   var txt=document.getElementById('actTexto').value;
@@ -1509,7 +1524,7 @@ function importarActividad(){
         /* Vendido por mí: registra el movimiento y suma el dinero */
         sacarDeMiPlantilla(e.nombre,e.precio,true);
         misVentas++;
-        detalle.push({t:'venta',n:e.nombre,de:'tu equipo',a:null,p:e.precio,mio:true});
+        detalle.push({t:'venta',n:e.nombre,de:(D.miEquipo||'Mi equipo'),a:null,p:e.precio,mio:true});
         return;
       }
       if(quitarDeTodos(e.nombre))bajas++;
@@ -1522,7 +1537,7 @@ function importarActividad(){
       sacarDeMiPlantilla(e.nombre,e.precio,true);
       misVentas++;
       detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,
-                    de:'tu equipo',a:e.equipo,p:e.precio,mio:true});
+                    de:(D.miEquipo||'Mi equipo'),a:e.equipo,p:e.precio,mio:true});
       quitarDeTodos(e.nombre);
       var rc=D.rivales.find(function(x){return normalizar(x.nombre)===normalizar(e.equipo);});
       if(!rc){rc={id:id(),nombre:e.equipo,jugadores:[],f:hoy()};D.rivales.push(rc);}
@@ -1552,7 +1567,8 @@ function importarActividad(){
         D.saldo-=e.precio;
         misCompras++;
       }
-      detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,de:antes,a:e.equipo,p:e.precio,mio:true});
+      detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,
+                    de:origenDe(e,antes),a:e.equipo,p:e.precio,mio:true});
       return;
     }
     var r=D.rivales.find(function(x){return normalizar(x.nombre)===normalizar(e.equipo);});
@@ -1566,7 +1582,8 @@ function importarActividad(){
       pos2:g?g.pos2:(reg&&reg.pos2?reg.pos2:(e.pos[1]||'')),
       desde:hoy()});
     altas++;
-    detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,de:antes,a:e.equipo,p:e.precio});
+    detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,
+                  de:origenDe(e,antes),a:e.equipo,p:e.precio});
   });
 
   /* Se guarda el historial para poder revisarlo después */
@@ -1591,14 +1608,23 @@ function pintarMovLiga(){
   var color={compra:'up',venta:'down',clausulazo:'',fuera:'muted',deposito:'muted'};
   c.innerHTML='<p class="hint" style="margin-top:18px"><b>Lo que he entendido del tablón</b></p>'+
     m.slice(0,60).map(function(x){
-      var destino=(x.t==='clausulazo'&&x.mio)?('te lo quitó '+esc(x.a||'?')):
-                  x.t==='venta'?'al mercado':
-                  (x.t==='fuera'?'fuera de la competición':
-                  (x.t==='deposito'?('blinda su cláusula'+(x.repetido?' · ya estaba aplicado':'')):esc(x.a||'?')));
+      /* Siempre el mismo formato: de dónde sale → a dónde va. El mercado
+         cuenta como un origen o un destino más, igual que un equipo. */
+      var origen,destino;
+      if(x.t==='deposito'){
+        origen=esc(x.de||'?');destino='blinda su cláusula'+(x.repetido?' · ya estaba aplicado':'');
+      }else if(x.t==='fuera'){
+        origen=esc(x.de||'?');destino='fuera de la competición';
+      }else if(x.t==='venta'){
+        origen=esc(x.de||'?');destino='Mercado';
+      }else{
+        origen=x.de?esc(x.de):'Mercado';
+        destino=esc(x.a||'?');
+      }
       return '<div class="chg">'+
         '<span class="racha '+(color[x.t]||'')+'" style="min-width:18px">'+(icono[x.t]||'·')+'</span>'+
         '<div class="who"><b>'+esc(x.n)+(x.mio?' <span class="tag watch">tuyo</span>':'')+'</b>'+
-        '<small class="muted">'+(x.de?esc(x.de)+' → ':'')+destino+(x.p?' · '+eur(x.p):'')+'</small></div>'+
+        '<small class="muted">'+origen+' → '+destino+(x.p?' · '+eur(x.p):'')+'</small></div>'+
       '</div>';
     }).join('')+
     '<button class="btn ghost" style="margin-top:10px" onclick="borrarMovLiga()">Vaciar este historial</button>';
@@ -1935,7 +1961,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V30 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V33 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   L.push('Plantilla '+D.plantilla.length+'/'+LIMITE_PLANTILLA+
          (D.plantilla.length>=LIMITE_PLANTILLA?' (LLENA: hay que vender antes de fichar)':''));
