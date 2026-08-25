@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V37</title>
+<title>Cuaderno de mercado · Biwenger V38</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V37</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V38</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -368,6 +368,7 @@ details > *:first-child + *{margin-top:12px}
 <section id="tab-movs" hidden>
   <p class="hint">Cada venta queda registrada con su beneficio real. Es el histórico que demuestra si el mercado te está saliendo bien.</p>
   <div id="resumenMovs"></div>
+  <button class="btn ghost" style="margin-bottom:10px" onclick="var n=limpiarDuplicadosMovs();guardar();pintar();aviso(n?n+' duplicados eliminados':'Sin duplicados');">Quitar duplicados del historial</button>
   <div id="listaMovs"></div>
 </section>
 
@@ -1982,6 +1983,20 @@ function duenoDe(nombre){
 }
 
 /* ============ Movimientos ============ */
+/* Quita duplicados exactos del historial (mismo jugador, misma venta) que
+   pudieron colarse en versiones anteriores a la V37, antes de que existiera
+   esta protección. Se queda con uno solo de cada. */
+function limpiarDuplicadosMovs(){
+  var vistos={};
+  var antes=D.movimientos.length;
+  D.movimientos=D.movimientos.filter(function(m){
+    var k=normalizar(m.nombre)+'|'+m.venta+'|'+m.compra;
+    if(vistos[k])return false;
+    vistos[k]=true;
+    return true;
+  });
+  return antes-D.movimientos.length;
+}
 function pintarMovs(){
   var r=document.getElementById('resumenMovs'),c=document.getElementById('listaMovs');
   if(!D.movimientos.length){r.innerHTML='';c.innerHTML='<div class="empty">Todavía no has vendido a nadie.</div>';return;}
@@ -2058,7 +2073,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V37 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V38 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   var protegidos=D.plantilla.filter(function(p){return p.fFichaje&&diasParaClausular({desde:p.fFichaje})>0;});
   if(protegidos.length){
@@ -2262,7 +2277,13 @@ drop.addEventListener('click',function(e){if(e.target.tagName!=='U')document.get
 });
 drop.addEventListener('drop',function(e){leerArchivo(e.dataTransfer.files[0]);});
 
-cargar();pintar();
+cargar();
+if(!D.limpiadoV37){
+  var quitados=limpiarDuplicadosMovs();
+  D.limpiadoV37=true;
+  if(quitados)guardar();
+}
+pintar();
 setInterval(function(){pintarCierre();pintarFuentes();},60000);
 </script>
 </body>
