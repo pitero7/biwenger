@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V29</title>
+<title>Cuaderno de mercado · Biwenger V30</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V29</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V30</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -1322,7 +1322,12 @@ var RE_RUIDO=/^(venta inmediata|mercado|\d+ pujas?|-?\d+$|.*puntos\t|¡|más inf
 function leerTablon(txt){
   /* Según de dónde se copie, el texto puede venir con enlaces de markdown
      o en texto plano. Se normaliza a texto plano antes de leer nada. */
-  var L=txt.replace(/\[([^\]]*)\]\([^)]*\)/g,'$1')
+  /* En un clausulazo los dos equipos vienen pegados en la misma línea:
+     [vendedor](...)[comprador](...). Se marcan antes de limpiar los enlaces
+     para no perder quién vende y quién compra. */
+  var RE_DOS=/\[([^\]]+)\]\((https?:)?[^)]*\/user\/[^)]*\)\s*\[([^\]]+)\]\((https?:)?[^)]*\/user\/[^)]*\)/g;
+  var L=txt.replace(RE_DOS,function(m,a,x,b){return '«TRASPASO»'+a.trim()+'»'+b.trim();})
+           .replace(/\[([^\]]*)\]\([^)]*\)/g,'$1')
            .split(/\r?\n/)
            .map(function(s){return s.replace(/^\s*[*\-•]\s+/,'').trim();});
   var entradas=[],cabecera=null,i=0;
@@ -1355,6 +1360,13 @@ function leerTablon(txt){
     for(;j<L.length;j++){
       var b=L[j];
       if(b==='')continue;
+      /* Clausulazo: cambia de dueño y sabemos de quién a quién */
+      var mt=b.match(/^«TRASPASO»(.+?)»(.+)$/);
+      if(mt){
+        e.tipo='compra';e.clausulazo=true;
+        e.vendedor=mt[1].trim();e.equipo=mt[2].trim();
+        continue;
+      }
       /* "Deposita X €" y "Nueva cláusula Y €": el dueño blinda al jugador,
          no cambia de equipo. Se comprueba antes que nada. */
       var mdep=b.match(/^deposita\s+([\d.,]+)/i);
@@ -1376,6 +1388,10 @@ function leerTablon(txt){
       if(mp){e.precio=num(mp[1]);if(!e.tipo)e.tipo='venta';continue;}
       if(b==='Mercado'||RE_RUIDO.test(b))continue;
       if(!e.equipo)e.equipo=b;
+      else if(!e.vendedor&&!e.clausulazo&&e.tipo!=='compra'){
+        /* Segundo equipo en el mismo bloque: el primero vendía */
+        e.vendedor=e.equipo;e.equipo=b;e.tipo='compra';e.clausulazo=true;
+      }
     }
     if(e.tipo==='venta'&&!e.equipo)e.equipo=cabecera;
     if(e.tipo==='compra'&&!e.equipo)e.equipo=cabecera;
@@ -1501,6 +1517,23 @@ function importarActividad(){
       return;
     }
     if(e.tipo!=='compra'||!e.equipo)return;
+    /* Si el jugador era mío y se lo lleva otro, cobro el importe */
+    if(esMio&&!mioAqui){
+      sacarDeMiPlantilla(e.nombre,e.precio,true);
+      misVentas++;
+      detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,
+                    de:'tu equipo',a:e.equipo,p:e.precio,mio:true});
+      quitarDeTodos(e.nombre);
+      var rc=D.rivales.find(function(x){return normalizar(x.nombre)===normalizar(e.equipo);});
+      if(!rc){rc={id:id(),nombre:e.equipo,jugadores:[],f:hoy()};D.rivales.push(rc);}
+      var gc=posGuardada(e.nombre);
+      var rgc=(D.jugadores||{})[normalizar(e.nombre)];
+      rc.jugadores.push({nombre:e.nombre,valor:rgc&&rgc.valor?rgc.valor:e.precio,
+        pagado:e.precio,dias:null,puntos:rgc?rgc.puntos:0,
+        pos:gc?gc.pos:(e.pos[0]||''),pos2:gc?gc.pos2:(e.pos[1]||''),desde:hoy()});
+      altas++;
+      return;
+    }
     quitarDeTodos(e.nombre);
     if(mioAqui){
       propios++;
@@ -1558,7 +1591,8 @@ function pintarMovLiga(){
   var color={compra:'up',venta:'down',clausulazo:'',fuera:'muted',deposito:'muted'};
   c.innerHTML='<p class="hint" style="margin-top:18px"><b>Lo que he entendido del tablón</b></p>'+
     m.slice(0,60).map(function(x){
-      var destino=x.t==='venta'?'al mercado':
+      var destino=(x.t==='clausulazo'&&x.mio)?('te lo quitó '+esc(x.a||'?')):
+                  x.t==='venta'?'al mercado':
                   (x.t==='fuera'?'fuera de la competición':
                   (x.t==='deposito'?('blinda su cláusula'+(x.repetido?' · ya estaba aplicado':'')):esc(x.a||'?')));
       return '<div class="chg">'+
@@ -1901,7 +1935,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V29 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V30 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   L.push('Plantilla '+D.plantilla.length+'/'+LIMITE_PLANTILLA+
          (D.plantilla.length>=LIMITE_PLANTILLA?' (LLENA: hay que vender antes de fichar)':''));
