@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V36</title>
+<title>Cuaderno de mercado · Biwenger V37</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V36</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V37</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -1467,7 +1467,7 @@ function leerTablon(txt){
       var mp=b.match(/^por\s+([\d.]+)/i);
       if(mp){e.precio=num(mp[1]);if(!e.tipo)e.tipo='venta';continue;}
       if(b==='Mercado'||RE_RUIDO.test(b))continue;
-      if(!e.equipo)e.equipo=b;
+      if(!e.equipo&&!fechaDeEtiqueta(b))e.equipo=b;
       else if(!e.vendedor&&!e.clausulazo&&e.tipo!=='compra'){
         /* Segundo equipo en el mismo bloque: el primero vendía */
         e.vendedor=e.equipo;e.equipo=b;e.tipo='compra';e.clausulazo=true;
@@ -1521,8 +1521,8 @@ function sacarDeMiPlantilla(nombre,precio,esVenta,fecha){
 /* Cada movimiento que toca mi saldo o mi plantilla se marca al aplicarse.
    Si el mismo movimiento reaparece en un tablón repetido o en un histórico
    pegado de nuevo, se reconoce y se ignora en vez de aplicarse otra vez. */
-function claveMovimiento(prefijo,nombre,precio,fecha){
-  return prefijo+'|'+normalizar(nombre)+'|'+(precio||0)+'|'+(fecha||'');
+function claveMovimiento(prefijo,nombre,precio){
+  return prefijo+'|'+normalizar(nombre)+'|'+(precio||0);
 }
 function yaAplicado(clave){
   D.eventos=D.eventos||{};
@@ -1602,7 +1602,7 @@ function importarActividad(){
     }
     if(e.tipo==='venta'){
       if(esMio&&(mioAqui||!e.equipo)){
-        var claveV=claveMovimiento('miventa',e.nombre,e.precio,e.fecha);
+        var claveV=claveMovimiento('miventa',e.nombre,e.precio);
         if(!yaAplicado(claveV)){
           sacarDeMiPlantilla(e.nombre,e.precio,true,e.fecha);
           misVentas++;
@@ -1618,7 +1618,7 @@ function importarActividad(){
     if(e.tipo!=='compra'||!e.equipo)return;
     /* Si el jugador era mío y se lo lleva otro, cobro el importe */
     if(esMio&&!mioAqui){
-      var claveP=claveMovimiento('miventa',e.nombre,e.precio,e.fecha);
+      var claveP=claveMovimiento('miventa',e.nombre,e.precio);
       if(!yaAplicado(claveP)){
         sacarDeMiPlantilla(e.nombre,e.precio,true,e.fecha);
         misVentas++;
@@ -1641,7 +1641,7 @@ function importarActividad(){
     if(mioAqui){
       propios++;
       if(!esMio){
-        var claveC=claveMovimiento('micompra',e.nombre,e.precio,e.fecha);
+        var claveC=claveMovimiento('micompra',e.nombre,e.precio);
         if(!yaAplicado(claveC)){
           var g2=posGuardada(e.nombre);
           var reg2=(D.jugadores||{})[normalizar(e.nombre)];
@@ -2058,7 +2058,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V36 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V37 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   var protegidos=D.plantilla.filter(function(p){return p.fFichaje&&diasParaClausular({desde:p.fFichaje})>0;});
   if(protegidos.length){
