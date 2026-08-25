@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V33</title>
+<title>Cuaderno de mercado · Biwenger V34</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V33</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V34</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -1284,6 +1284,35 @@ function resolverSigno(mid,dir){
 /* ============ Rivales de la liga ============ */
 var FACTOR=1.5;
 var LIMITE_PLANTILLA=22;
+var DIAS_INMUNIDAD=14;
+
+/* Tras fichar a alguien, nadie puede clausularlo durante dos semanas.
+   La fecha de fichaje se guarda al leerla del tablón. */
+function sumarDias(f,n){
+  var d=new Date(f+'T00:00:00');
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function fechaLibre(j){
+  if(!j||!j.desde)return null;
+  return sumarDias(j.desde,DIAS_INMUNIDAD);
+}
+/* Días que faltan para poder clausularlo. 0 o menos = ya se puede. */
+function diasParaClausular(j){
+  var f=fechaLibre(j);
+  if(!f)return 0;
+  return diasEntre(hoy(),f);
+}
+function fechaCorta(f){
+  if(!f)return '';
+  var p=f.split('-');
+  return p[2]+'/'+p[1];
+}
+function inmunidadTxt(j){
+  var d=diasParaClausular(j);
+  if(d<=0)return '';
+  return d===1?'libre mañana':('libre el '+fechaCorta(fechaLibre(j)));
+}
 /* La cláusula es 1,5 x la base, y la base es el valor de mercado salvo que
    el dueño pagara más: entonces manda lo que pagó. */
 function baseDe(j){
@@ -1864,7 +1893,12 @@ function pintarLiga(){
       return '<div class="chg">'+posHTML(j)+
         '<div class="who"><b>'+esc(j.nombre)+'</b><small class="muted mono">'+eur(j.valor)+
         ' · cl '+eur(clausulaDe(j))+(j.deposito?' <span class="up">blindado</span>':'')+
-        (sp?' <span class="down">(+'+eur(sp)+' de más)</span>':'')+' · '+puntosTxt(j.puntos)+'</small></div>'+
+        (sp?' <span class="down">(+'+eur(sp)+' de más)</span>':'')+' · '+puntosTxt(j.puntos)+
+        (function(){
+          var d=diasParaClausular(j);
+          if(d<=0)return '';
+          return ' · <span class="'+(d<=3?'up':'muted')+'">'+inmunidadTxt(j)+'</span>';
+        })()+'</small></div>'+
         (e.mio?'':'<button onclick="editarClausula(\''+e.id+'\',\''+esc(j.nombre).replace(/\'/g,"")+'\')" '+
         'style="background:none;border:1px solid var(--line);color:var(--muted);'+
         'font-family:inherit;font-size:10px;padding:3px 8px;border-radius:7px;cursor:pointer">cláusula</button>')+
@@ -1961,8 +1995,13 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V33 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V34 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
+  var protegidos=D.plantilla.filter(function(p){return p.fFichaje&&diasParaClausular({desde:p.fFichaje})>0;});
+  if(protegidos.length){
+    L.push('MIS PROTEGIDOS de clausulazo: '+protegidos.map(function(p){
+      return p.nombre+' (hasta '+fechaLibre({desde:p.fFichaje})+')';}).join(', '));
+  }
   L.push('Plantilla '+D.plantilla.length+'/'+LIMITE_PLANTILLA+
          (D.plantilla.length>=LIMITE_PLANTILLA?' (LLENA: hay que vender antes de fichar)':''));
   L.push('Plusvalía latente '+signo(plus)+' | Beneficio realizado en ventas '+signo(benef));
@@ -2005,7 +2044,9 @@ function construirInforme(){
         var sp=sobrepago(j);
         L.push('  · '+j.nombre+(j.pos?' ('+etiq(j.pos)+(j.pos2?'/'+etiq(j.pos2):'')+')':'')+
           ' | vale '+eur(j.valor)+' | pagó '+eur(j.pagado||j.valor)+' | cláusula '+eur(clausulaDe(j))+
-          ' | '+(j.puntos||0)+' pts'+mediaTxt(j.nombre)+jornadasTxt(j.nombre)+evolucionTxt(j.nombre)+(sp?' | sobrepagó '+eur(sp):''));
+          ' | '+(j.puntos||0)+' pts'+mediaTxt(j.nombre)+jornadasTxt(j.nombre)+evolucionTxt(j.nombre)+
+          (diasParaClausular(j)>0?' | NO CLAUSULABLE hasta '+fechaLibre(j):'')+
+          (sp?' | sobrepagó '+eur(sp):''));
       });
     });
   }
