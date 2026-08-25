@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V34</title>
+<title>Cuaderno de mercado · Biwenger V35</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V34</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V35</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -1346,6 +1346,44 @@ function parsearLinea(l){
    el nombre del jugador con las posiciones en medio: ese es el ancla. */
 var RE_SECCION=/^(fichajes|mercado de fichajes|movimiento de jugadores|liga reiniciada|quiniela|fin de|comienzo de|nuevo usuario|jornada \d|puedes ver el resultado|al haber partidos|la liga ha sido|cláusulas?|clausulas?|traspasos?|intercambios?)/i;
 var RE_FECHA=/^(hace \w+|ayer|hoy|\d{1,2} \w{3,}|\d+ (hora|día|dia|minuto)s?)/i;
+/* El tablón dice cuándo ocurrió cada movimiento: "hace 2 horas", "ayer",
+   "18 ago". Se traduce a fecha real para calcular bien las inmunidades. */
+var MESES={ene:0,feb:1,mar:2,abr:3,may:4,jun:5,jul:6,ago:7,sep:8,set:8,oct:9,nov:10,dic:11};
+function fechaDeEtiqueta(txt){
+  var t=String(txt).trim().toLowerCase();
+  var hoyD=new Date(hoy()+'T00:00:00');
+  function menos(dias){
+    var d=new Date(hoyD);d.setDate(d.getDate()-dias);
+    return d.toISOString().slice(0,10);
+  }
+  if(/^hoy\b/.test(t))return hoy();
+  if(/^ayer\b/.test(t))return menos(1);
+  if(/^anteayer\b/.test(t))return menos(2);
+  /* "hace 2 horas", "hace un día", "hace 3 días", "hace 28 minutos" */
+  var mh=t.match(/^hace\s+(un[ao]?|\d+)\s*(minuto|hora|d[ií]a|semana|mes)/);
+  if(mh){
+    var n=/^un/.test(mh[1])?1:parseInt(mh[1],10);
+    var u=mh[2];
+    if(/minuto|hora/.test(u))return hoy();
+    if(/d[ií]a/.test(u))return menos(n);
+    if(/semana/.test(u))return menos(n*7);
+    if(/mes/.test(u))return menos(n*30);
+  }
+  /* "18 ago" o "18 ago 2026" */
+  var mf=t.match(/^(\d{1,2})\s+([a-záéíóú]{3,})\.?\s*(\d{4})?$/);
+  if(mf){
+    var dia=parseInt(mf[1],10);
+    var mes=MESES[mf[2].slice(0,3)];
+    if(mes!==undefined){
+      var anio=mf[3]?parseInt(mf[3],10):hoyD.getFullYear();
+      var d=new Date(anio,mes,dia);
+      /* Si sale en el futuro, es del año pasado */
+      if(d>hoyD)d.setFullYear(anio-1);
+      return d.toISOString().slice(0,10);
+    }
+  }
+  return null;
+}
 var RE_RUIDO=/^(venta inmediata|mercado|\d+ pujas?|-?\d+$|.*puntos\t|¡|más información|síguela|envíanos|premios|\d+º)/i;
 
 function leerTablon(txt){
@@ -1359,7 +1397,7 @@ function leerTablon(txt){
            .replace(/\[([^\]]*)\]\([^)]*\)/g,'$1')
            .split(/\r?\n/)
            .map(function(s){return s.replace(/^\s*[*\-•]\s+/,'').trim();});
-  var entradas=[],cabecera=null,i=0;
+  var entradas=[],cabecera=null,fechaSec=null,i=0;
   function ancla(k){
     var linea=L[k];
     if(!linea||RE_SECCION.test(linea)||RE_FECHA.test(linea)||RE_RUIDO.test(linea)||RE_POS.test(linea))return -1;
@@ -1376,15 +1414,20 @@ function leerTablon(txt){
     var l=L[i];
     if(!l){i++;continue;}
     if(RE_SECCION.test(l)){
-      cabecera=null;
-      var n=i+1;
-      while(n<L.length&&L[n]==='')n++;
-      if(n<L.length&&!RE_FECHA.test(L[n])&&!RE_SECCION.test(L[n])&&ancla(n)===-1&&!RE_RUIDO.test(L[n])) cabecera=L[n];
+      cabecera=null;fechaSec=null;
+      /* Tras el encabezado vienen el equipo y la fecha, en cualquier orden */
+      for(var n=i+1;n<L.length&&n<=i+4;n++){
+        if(L[n]==='')continue;
+        if(RE_SECCION.test(L[n])||ancla(n)!==-1)break;
+        var fx=fechaDeEtiqueta(L[n]);
+        if(fx){fechaSec=fx;continue;}
+        if(!cabecera&&!RE_RUIDO.test(L[n]))cabecera=L[n];
+      }
       i++;continue;
     }
     var a=ancla(i);
     if(a===-1){i++;continue;}
-    var e={nombre:l,pos:a.pos,equipo:null,precio:0,tipo:null,clausulazo:false};
+    var e={nombre:l,pos:a.pos,equipo:null,precio:0,tipo:null,clausulazo:false,fecha:fechaSec};
     var j=a.fin+1;
     for(;j<L.length;j++){
       var b=L[j];
@@ -1574,7 +1617,7 @@ function importarActividad(){
       var rgc=(D.jugadores||{})[normalizar(e.nombre)];
       rc.jugadores.push({nombre:e.nombre,valor:rgc&&rgc.valor?rgc.valor:e.precio,
         pagado:e.precio,dias:null,puntos:rgc?rgc.puntos:0,
-        pos:gc?gc.pos:(e.pos[0]||''),pos2:gc?gc.pos2:(e.pos[1]||''),desde:hoy()});
+        pos:gc?gc.pos:(e.pos[0]||''),pos2:gc?gc.pos2:(e.pos[1]||''),desde:e.fecha||hoy()});
       altas++;
       return;
     }
@@ -1591,7 +1634,7 @@ function importarActividad(){
           pos:g2?g2.pos:(e.pos[0]||'MED'),pos2:g2?g2.pos2:(e.pos[1]||''),
           equipo:reg2?reg2.equipo:'',
           compra:e.precio,valor:valorMercado,puntos:reg2?reg2.puntos:0,
-          fFichaje:hoy(),valorAlFichar:valorMercado,
+          fFichaje:e.fecha||hoy(),valorAlFichar:valorMercado,
           hist:[{f:hoy(),v:valorMercado}],dhist:[]});
         D.saldo-=e.precio;
         misCompras++;
@@ -1609,7 +1652,7 @@ function importarActividad(){
       pagado:e.precio,dias:null,puntos:reg?reg.puntos:0,
       pos:g?g.pos:(reg&&reg.pos?reg.pos:(e.pos[0]||'')),
       pos2:g?g.pos2:(reg&&reg.pos2?reg.pos2:(e.pos[1]||'')),
-      desde:hoy()});
+      desde:e.fecha||hoy()});
     altas++;
     detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,
                   de:origenDe(e,antes),a:e.equipo,p:e.precio});
@@ -1896,7 +1939,7 @@ function pintarLiga(){
         (sp?' <span class="down">(+'+eur(sp)+' de más)</span>':'')+' · '+puntosTxt(j.puntos)+
         (function(){
           var d=diasParaClausular(j);
-          if(d<=0)return '';
+          if(d<=0)return j.desde?' · <span class="muted">fichado '+fechaCorta(j.desde)+'</span>':'';
           return ' · <span class="'+(d<=3?'up':'muted')+'">'+inmunidadTxt(j)+'</span>';
         })()+'</small></div>'+
         (e.mio?'':'<button onclick="editarClausula(\''+e.id+'\',\''+esc(j.nombre).replace(/\'/g,"")+'\')" '+
@@ -1995,7 +2038,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V34 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V35 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   var protegidos=D.plantilla.filter(function(p){return p.fFichaje&&diasParaClausular({desde:p.fFichaje})>0;});
   if(protegidos.length){
