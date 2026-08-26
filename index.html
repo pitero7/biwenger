@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V38</title>
+<title>Cuaderno de mercado · Biwenger V41</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V38</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V41</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -412,7 +412,7 @@ details > *:first-child + *{margin-top:12px}
 <script>
 /* ============ Almacén ============ */
 var KEY='biwenger-cuaderno-v1';
-var D={saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},clasificacion:[],ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}};
+var D={saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},clasificacion:[],puntosLiga:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}};
 var memoria=null;
 
 function guardar(){
@@ -1546,8 +1546,9 @@ function importarActividad(){
   if(!txt.trim()){aviso('Pega el tablón primero');return;}
   D.rivales=D.rivales||[];D.movLiga=D.movLiga||[];
   var mio=normalizar(D.miEquipo||'');
+  var fin=aplicarFinesDeJornada(txt);
   var entradas=leerTablon(txt);
-  if(!entradas.length){
+  if(!entradas.length&&!fin.jornadas){
     out.innerHTML='<div class="empty">No he reconocido ningún movimiento en ese texto.</div>';
     return;
   }
@@ -1555,9 +1556,19 @@ function importarActividad(){
      para que el último movimiento de cada jugador sea el que manda. */
   entradas.reverse();
 
-  var altas=0,bajas=0,posAprendidas=0,propios=0,misCompras=0,misVentas=0,blindajes=0,detalle=[];
+  var altas=0,bajas=0,posAprendidas=0,propios=0,misCompras=0,misVentas=0,blindajes=0,yaEstaban=0,detalle=[];
   entradas.forEach(function(e){
+    /* Las posiciones sí se aprenden siempre: no destruyen nada */
     if(e.pos.length>1){recordarPos(e.nombre,e.pos[0],e.pos[1]);posAprendidas++;}
+
+    /* Un movimiento ya aplicado no vuelve a tocarse. Reprocesar el tablón
+       entero no debe alterar saldo, plantillas, blindajes ni fechas. */
+    var claveMov='mov|'+(e.tipo||'?')+'|'+normalizar(e.nombre)+'|'+(e.precio||0)+
+                 '|'+normalizar(e.equipo||'')+'|'+normalizar(e.vendedor||'');
+    if(e.tipo!=='deposito'&&yaAplicado(claveMov)){
+      yaEstaban++;
+      return;
+    }
     var antes=duenoActual(e.nombre);
 
     /* ¿Está en MI plantilla? Entonces los movimientos me afectan a mí */
@@ -1598,7 +1609,8 @@ function importarActividad(){
     if(e.tipo==='fuera'){
       if(esMio)sacarDeMiPlantilla(e.nombre,0,false);
       if(quitarDeTodos(e.nombre))bajas++;
-      detalle.push({t:'fuera',n:e.nombre,de:antes||(esMio?'tu equipo':null),a:null,p:0,mio:esMio});
+      detalle.push({t:'fuera',n:e.nombre,de:antes||(esMio?(D.miEquipo||'Mi equipo'):null),a:null,p:0,mio:esMio});
+      marcarAplicado(claveMov);
       return;
     }
     if(e.tipo==='venta'){
@@ -1610,10 +1622,12 @@ function importarActividad(){
           marcarAplicado(claveV);
         }
         detalle.push({t:'venta',n:e.nombre,de:(D.miEquipo||'Mi equipo'),a:null,p:e.precio,mio:true});
+        marcarAplicado(claveMov);
         return;
       }
       if(quitarDeTodos(e.nombre))bajas++;
       detalle.push({t:'venta',n:e.nombre,de:e.equipo||antes,a:null,p:e.precio});
+      marcarAplicado(claveMov);
       return;
     }
     if(e.tipo!=='compra'||!e.equipo)return;
@@ -1636,6 +1650,7 @@ function importarActividad(){
         pagado:e.precio,dias:null,puntos:rgc?rgc.puntos:0,
         pos:gc?gc.pos:(e.pos[0]||''),pos2:gc?gc.pos2:(e.pos[1]||''),desde:e.fecha||hoy()});
       altas++;
+      marcarAplicado(claveMov);
       return;
     }
     quitarDeTodos(e.nombre);
@@ -1662,6 +1677,7 @@ function importarActividad(){
       }
       detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,
                     de:origenDe(e,antes),a:e.equipo,p:e.precio,mio:true});
+      marcarAplicado(claveMov);
       return;
     }
     var r=D.rivales.find(function(x){return normalizar(x.nombre)===normalizar(e.equipo);});
@@ -1675,6 +1691,7 @@ function importarActividad(){
       pos2:g?g.pos2:(reg&&reg.pos2?reg.pos2:(e.pos[1]||'')),
       desde:e.fecha||hoy()});
     altas++;
+    marcarAplicado(claveMov);
     detalle.push({t:e.clausulazo?'clausulazo':'compra',n:e.nombre,
                   de:origenDe(e,antes),a:e.equipo,p:e.precio});
   });
@@ -1688,7 +1705,10 @@ function importarActividad(){
     '<b>'+altas+' altas · '+bajas+' salidas</b><small>'+
     entradas.length+' movimientos leídos · '+posAprendidas+' multiposiciones'+
     (misCompras?' · '+misCompras+' fichajes tuyos añadidos':'')+
-    (misVentas?' · '+misVentas+' ventas tuyas registradas':'')+(blindajes?' · '+blindajes+' cláusulas blindadas':'')+'</small></div></div></div>'+
+    (misVentas?' · '+misVentas+' ventas tuyas registradas':'')+(blindajes?' · '+blindajes+' cláusulas blindadas':'')+
+    (yaEstaban?' · '+yaEstaban+' ya estaban aplicados':'')+
+    (fin.jornadas?' · '+fin.jornadas+' jornada(s) cerrada(s)':'')+
+    (fin.cobrado?' · cobrados '+eur(fin.cobrado):'')+'</small></div></div></div>'+
     '<p class="hint" style="margin-top:12px">Revisa abajo que lo haya interpretado bien.</p>';
 }
 
@@ -1851,6 +1871,82 @@ function editarClausula(rid,nombre){
 }
 /* Lee la clasificación tal cual se copia: la posición, el nombre y los puntos
    pueden venir en la misma línea o en líneas seguidas. */
+/* Lee los bloques "Fin de / Jornada N" del tablón: puntos y abono de cada
+   equipo en esa jornada. Una misma jornada puede cerrarse en varias fechas
+   (partidos aplazados), así que cada bloque es un cobro independiente que se
+   suma; los bloques idénticos se reconocen y no se cuentan dos veces. */
+function leerFinesDeJornada(txt){
+  var L=txt.replace(/\[([^\]]*)\]\([^)]*\)/g,'$1')
+           .split(/\r?\n/).map(function(s){return s.replace(/^\s*[*\-•]\s+/,'').trim();});
+  var out=[],i=0;
+  while(i<L.length){
+    if(!/^fin de$/i.test(L[i])){i++;continue;}
+    /* La jornada viene en la línea siguiente */
+    var mj=null,j=i+1;
+    while(j<L.length&&j<=i+3){
+      var m=L[j].match(/^jornada\s+(\d+)/i);
+      if(m){mj=parseInt(m[1],10);break;}
+      j++;
+    }
+    if(mj===null){i++;continue;}
+    var filas=[],k=j+1;
+    while(k<L.length){
+      if(/^fin de$/i.test(L[k]))break;
+      /* "Al haber partidos aplazados..." es un aviso dentro del propio bloque,
+         no el comienzo de otra sección: no debe cortar la lectura. */
+      if(RE_SECCION.test(L[k])&&!/^al haber partidos/i.test(L[k]))break;
+      var mp=L[k].match(/^(\d{1,2})\s*[ºo°.]?$/);
+      if(!mp){k++;continue;}
+      var pos=parseInt(mp[1],10),nombre='',pts=null,abono=0,z=k+1;
+      while(z<L.length&&z<=k+5){
+        /* "62 puntos	4.180.000 €" o solo "48 puntos" */
+        var mpt=L[z].match(/^(-?\d[\d.]*)\s*puntos?\s*(.*)$/i);
+        if(mpt){
+          pts=parseInt(String(mpt[1]).replace(/\./g,''),10);
+          var resto=mpt[2]||'';
+          var ma=resto.match(/([\d.]+)\s*€/);
+          if(ma)abono=num(ma[1]);
+          break;
+        }
+        if(/^\d{1,2}\s*[ºo°.]$/.test(L[z]))break;
+        nombre=nombre?nombre+' '+L[z]:L[z];
+        z++;
+      }
+      if(nombre&&pts!==null){filas.push({pos:pos,nombre:nombre.trim(),puntos:pts,abono:abono});k=z+1;}
+      else k++;
+    }
+    if(filas.length)out.push({jornada:mj,filas:filas});
+    i=k;
+  }
+  return out;
+}
+/* Aplica los cierres de jornada: suma puntos a cada equipo y, si soy yo,
+   ingresa el abono en mi saldo. */
+function aplicarFinesDeJornada(txt){
+  var fines=leerFinesDeJornada(txt);
+  if(!fines.length)return {jornadas:0,cobrado:0,repetidos:0};
+  D.puntosLiga=D.puntosLiga||{};
+  D.eventos=D.eventos||{};
+  var aplicadas=0,cobrado=0,repetidos=0;
+  fines.forEach(function(f){
+    var firma=f.filas.map(function(x){return normalizar(x.nombre)+':'+x.puntos+':'+x.abono;}).join('|');
+    var clave='finjor|'+f.jornada+'|'+firma;
+    if(D.eventos[clave]){repetidos++;return;}
+    f.filas.forEach(function(x){
+      var k=normalizar(x.nombre);
+      if(!D.puntosLiga[k])D.puntosLiga[k]={nombre:x.nombre,puntos:0};
+      D.puntosLiga[k].nombre=x.nombre;
+      D.puntosLiga[k].puntos+=x.puntos;
+      if(D.miEquipo&&k===normalizar(D.miEquipo)&&x.abono){
+        D.saldo+=x.abono;cobrado+=x.abono;
+      }
+    });
+    D.eventos[clave]=hoy();
+    if(f.jornada>(D.jornada||0))D.jornada=f.jornada;
+    aplicadas++;
+  });
+  return {jornadas:aplicadas,cobrado:cobrado,repetidos:repetidos};
+}
 function leerClasificacion(txt){
   var L=txt.replace(/\[([^\]]*)\]\([^)]*\)/g,'$1')
            .split(/\r?\n/).map(function(s){return s.replace(/^\s*[*\-•]\s+/,'').trim();})
@@ -1896,7 +1992,10 @@ function importarClasificacion(){
 }
 /* Puntos de clasificación de un equipo, por nombre */
 function puntosEquipo(nombre){
-  var c=(D.clasificacion||[]).find(function(x){return normalizar(x.nombre)===normalizar(nombre);});
+  var k=normalizar(nombre);
+  var p=(D.puntosLiga||{})[k];
+  if(p)return {nombre:p.nombre,puntos:p.puntos,pos:null};
+  var c=(D.clasificacion||[]).find(function(x){return normalizar(x.nombre)===k;});
   return c?c:null;
 }
 function pintarLiga(){
@@ -1925,18 +2024,21 @@ function pintarLiga(){
     e.pos=c?c.pos:null;
     e.valor=e.jugadores.reduce(function(a,j){return a+(j.valor||0)},0);
   });
-  var hayClas=equipos.some(function(e){return e.pos!==null;});
+  /* Orden por puntos de la liga, de mayor a menor */
+  var hayPts=equipos.some(function(e){return e.pts!==null;});
   equipos.sort(function(a,b){
-    if(hayClas){
-      if(a.pos===null)return 1;
-      if(b.pos===null)return -1;
-      return a.pos-b.pos;
+    if(hayPts){
+      if(a.pts===null)return 1;
+      if(b.pts===null)return -1;
+      if(b.pts!==a.pts)return b.pts-a.pts;
     }
     return b.valor-a.valor;
   });
+  /* La posición se recalcula del orden real, no de la que viniera guardada */
+  equipos.forEach(function(e,idx){if(hayPts&&e.pts!==null)e.pos=idx+1;});
 
   var total=equipos.reduce(function(a,e){return a+e.jugadores.length},0);
-  var lider=hayClas?equipos[0]:null;
+  var lider=hayPts?equipos[0]:null;
   res.innerHTML='<div class="card"><div class="row1"><div class="who">'+
     '<b>'+equipos.length+' equipos · '+total+' jugadores</b><small>'+
     (lider?'lidera '+esc(lider.nombre)+' con '+lider.pts+' pts':'sin clasificación cargada')+
@@ -2073,7 +2175,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V38 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V41 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   var protegidos=D.plantilla.filter(function(p){return p.fFichaje&&diasParaClausular({desde:p.fFichaje})>0;});
   if(protegidos.length){
@@ -2165,7 +2267,7 @@ function restaurarCopia(){
   var t=document.getElementById('restaurarTexto').value.trim();
   if(!t){aviso('Pega la copia primero');return;}
   try{
-    D=Object.assign({saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},clasificacion:[],ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}},JSON.parse(t));
+    D=Object.assign({saldo:0,jornada:1,miEquipo:'',movLiga:[],jugadores:{},eventos:{},clasificacion:[],puntosLiga:{},ultimo:{},plantilla:[],mercado:[],movimientos:[],notas:[],rivales:[],posiciones:{}},JSON.parse(t));
     guardar();pintar();document.getElementById('restaurarTexto').value='';aviso('Temporada restaurada');
   }catch(e){aviso('Esa copia no es válida');}
 }
