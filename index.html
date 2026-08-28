@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V42</title>
+<title>Cuaderno de mercado · Biwenger V45</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V42</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V45</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -1956,50 +1956,80 @@ function aplicarFinesDeJornada(txt){
   });
   return {jornadas:aplicadas,cobrado:cobrado,repetidos:repetidos};
 }
-/* La clasificación puede llegar como tabla (con tabuladores: nombre y
-   puntos en la misma celda) o como lista simple, uno por línea. Se prueba
-   primero la tabla, que es inconfundible por llevar \t. */
-function leerClasificacionTabla(txt){
-  var out=[];
-  txt.split(/\r?\n/).forEach(function(l){
-    if(l.indexOf('\t')<0)return;
-    var tokens=l.split('\t').map(function(t){return t.trim();}).filter(function(t){return t;});
-    var nombre=null,puntos=null;
-    for(var i=0;i<tokens.length;i++){
-      if(/^\d{1,4}$/.test(tokens[i])&&nombre===null&&i>0&&/[a-zA-ZÀ-ÿ]/.test(tokens[i-1])){
-        nombre=tokens[i-1];puntos=parseInt(tokens[i],10);break;
-      }
-    }
-    if(nombre&&puntos!==null)out.push({pos:null,nombre:nombre,puntos:puntos});
-  });
-  return out;
+/* Lector de clasificación tolerante. Da igual cómo venga pegada: la posición
+   puede estar suelta o unida al nombre, el separador puede ser tabulador,
+   espacios o nada, y las columnas de dinero, jugadores o última conexión
+   pueden aparecer o no. La regla es simple: en cada línea o bloque hay un
+   nombre de equipo y unos puntos, y todo lo demás es ruido descartable. */
+var RE_RUIDO_CLAS=/^(puntos|equipo|jugadores|[úu]ltima conexi[óo]n|clasificaci[óo]n|posici[óo]n|pts|valor|saldo|equipos?)$/i;
+
+function esDineroClas(t){ return /€|\$/.test(t); }
+function esFechaClas(t){ return /^(hace\s|ayer|hoy|\d+\s*(min|h|d)\b)/i.test(t); }
+
+/* Un nombre de equipo tiene letras y no es una etiqueta de cabecera */
+function pareceEquipo(t){
+  if(!t)return false;
+  if(RE_RUIDO_CLAS.test(t))return false;
+  if(esDineroClas(t)||esFechaClas(t))return false;
+  if(/^\d+\s*[ºo°.]?$/.test(t))return false;
+  return /[a-zA-ZÀ-ÿ]{3,}/.test(t);
 }
+
 function leerClasificacion(txt){
-  var tabla=leerClasificacionTabla(txt);
-  if(tabla.length)return tabla;
-  var L=txt.replace(/\[([^\]]*)\]\([^)]*\)/g,'$1')
-           .split(/\r?\n/).map(function(s){return s.replace(/^\s*[*\-•]\s+/,'').trim();})
-           .filter(function(s){return s;});
+  var lineas=txt.replace(/\[([^\]]*)\]\([^)]*\)/g,'$1').split(/\r?\n/);
+  var items=[];   /* secuencia de {tipo, valor} en el orden en que aparecen */
+
+  lineas.forEach(function(linea){
+    var l=linea.replace(/^\s*[*\-•]\s+/,'').trim();
+    if(!l)return;
+    /* Se parte por tabuladores o por dos o más espacios; si no hay ninguno,
+       la línea entera es un único elemento. */
+    var trozos=(/\t/.test(l)?l.split(/\t+/):l.split(/\s{2,}/))
+                 .map(function(t){return t.trim();}).filter(function(t){return t;});
+    trozos.forEach(function(t){
+      /* "1º supercarmela 93" todo junto en un trozo */
+      var m=t.match(/^(\d{1,2})\s*[ºo°.]\s*(.+)$/);
+      if(m){
+        items.push({tipo:'pos',v:parseInt(m[1],10)});
+        t=m[2].trim();
+      }
+      if(!t)return;
+      /* "supercarmela 93" pegado por un solo espacio */
+      var m2=t.match(/^(.+?)\s+(-?\d{1,4})$/);
+      if(m2&&pareceEquipo(m2[1])){
+        items.push({tipo:'equipo',v:m2[1].trim()});
+        items.push({tipo:'pts',v:parseInt(m2[2],10)});
+        return;
+      }
+      var mp=t.match(/^(-?\d[\d.]*)\s*puntos?\b/i);
+      if(mp){items.push({tipo:'pts',v:parseInt(String(mp[1]).replace(/\./g,''),10)});return;}
+      if(/^\d{1,2}\s*[ºo°.]$/.test(t)){items.push({tipo:'pos',v:parseInt(t,10)});return;}
+      if(esDineroClas(t)||esFechaClas(t)||RE_RUIDO_CLAS.test(t))return;
+      if(/^-?\d{1,4}$/.test(t)){items.push({tipo:'num',v:parseInt(t,10)});return;}
+      if(pareceEquipo(t)){items.push({tipo:'equipo',v:t});return;}
+    });
+  });
+
+  /* Recorrido: cada equipo toma el primer número que le sigue como puntos.
+     Los números sueltos anteriores al nombre (flechas de posición, etc.)
+     se descartan porque solo se mira hacia adelante. */
   var out=[],i=0;
-  while(i<L.length){
-    var mp=L[i].match(/^(\d{1,2})\s*[ºo°.]?$/);
-    if(!mp){i++;continue;}
-    var pos=parseInt(mp[1],10);
-    /* El nombre puede ocupar una o dos líneas; los puntos llegan después */
-    var nombre='',puntos=null,j=i+1;
-    while(j<L.length&&j<=i+5){
-      /* "48 puntos" en el tablón, o solo "48" en la pantalla de clasificación */
-      var mpt=L[j].match(/^(-?\d[\d.]*)\s*puntos?\b/i);
-      if(mpt){puntos=parseInt(String(mpt[1]).replace(/\./g,''),10);break;}
-      if(nombre&&/^-?\d{1,4}$/.test(L[j])){puntos=parseInt(L[j],10);break;}
-      /* La siguiente posición corta el bloque, pero solo si ya hay nombre */
-      if(nombre&&/^\d{1,2}\s*[ºo°.]$/.test(L[j]))break;
-      if(/^[\d.]+\s*€$/.test(L[j])||/^[▲▼↑↓+-]?\d+$/.test(L[j])&&!nombre){j++;continue;}
-      nombre=nombre?nombre+' '+L[j]:L[j];
+  while(i<items.length){
+    if(items[i].tipo!=='equipo'){i++;continue;}
+    var nombre=items[i].v,pts=null,j=i+1;
+    while(j<items.length&&j<=i+3){
+      if(items[j].tipo==='pts'){pts=items[j].v;break;}
+      if(items[j].tipo==='num'){pts=items[j].v;break;}
+      if(items[j].tipo==='equipo')break;
       j++;
     }
-    if(nombre&&puntos!==null){out.push({pos:pos,nombre:nombre.trim(),puntos:puntos});i=j+1;}
-    else i++;
+    if(pts!==null){
+      /* Si el mismo equipo ya salió, gana la última lectura */
+      var ya=out.find(function(x){return normalizar(x.nombre)===normalizar(nombre);});
+      if(ya)ya.puntos=pts;
+      else out.push({pos:null,nombre:nombre,puntos:pts});
+      i=j+1;
+    }else i++;
   }
   return out;
 }
@@ -2012,7 +2042,16 @@ function importarClasificacion(){
     out.innerHTML='<div class="empty">No he reconocido ninguna posición en ese texto.</div>';
     return;
   }
+  /* La clasificación pegada fija el total de puntos de cada equipo. Es la
+     misma fuente que usan los cierres de jornada, para que Liga no lea de
+     dos sitios distintos y muestre datos contradictorios. */
   D.clasificacion=lista;
+  D.puntosLiga=D.puntosLiga||{};
+  lista.forEach(function(e){
+    var k=normalizar(e.nombre);
+    if(!k)return;
+    D.puntosLiga[k]={nombre:e.nombre,puntos:e.puntos};
+  });
   document.getElementById('clasTexto').value='';
   guardar();pintar();
   out.innerHTML='<div class="card" style="margin-top:12px"><div class="row1"><div class="who">'+
@@ -2204,7 +2243,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V42 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V45 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   var protegidos=D.plantilla.filter(function(p){return p.fFichaje&&diasParaClausular({desde:p.fFichaje})>0;});
   if(protegidos.length){
