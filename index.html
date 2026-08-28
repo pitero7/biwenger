@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V46</title>
+<title>Cuaderno de mercado · Biwenger V47</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V46</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V47</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -1102,7 +1102,9 @@ function puntosTxt(p){
 function clausulaJugador(j){
   var a=j.clAnuncio;
   if(a&&a.c)return Math.round(a.c+((j.valor||0)-(a.v||0))*FACTOR);
-  return Math.round(Math.max(j.valor||0,j.pagado||0)*FACTOR);
+  var base=Math.max(j.valor||0,j.pagado||j.compra||0);
+  if(j.deposito)return Math.round((base+j.deposito)*FACTOR);
+  return Math.round(base*FACTOR);
 }
 /* Recalcula dueños a partir de mi plantilla y de las plantillas rivales */
 /* Baja a cada plantilla lo que manda el registro. Los atributos del jugador
@@ -1325,7 +1327,9 @@ function inmunidadTxt(j){
 /* Cláusula sin blindar: 1,5 x lo mayor entre el valor de mercado y lo que
    pagó su dueño. */
 function baseDe(j){
-  return Math.max(j.valor||0,j.pagado||0);
+  /* En mi plantilla el precio pagado se llama "compra"; en las rivales,
+     "pagado". Se aceptan los dos para que el cálculo no dependa de eso. */
+  return Math.max(j.valor||0,j.pagado||j.compra||0);
 }
 function clausulaSinBlindar(j){
   return Math.round(baseDe(j)*FACTOR);
@@ -1340,6 +1344,9 @@ function clausulaDe(j){
     var deriva=((j.valor||0)-(a.v||0))*FACTOR;
     return Math.round(a.c+deriva);
   }
+  /* Datos de versiones anteriores: guardaban el depósito en vez de la
+     cláusula anunciada. Se siguen respetando para no perder blindajes. */
+  if(j.deposito)return Math.round((baseDe(j)+j.deposito)*FACTOR);
   return clausulaSinBlindar(j);
 }
 /* Cuánto blindaje hay por encima de la cláusula que le tocaría */
@@ -1612,22 +1619,33 @@ function importarActividad(){
       var clave='dep|'+normalizar(e.nombre)+'|'+(e.deposito||0)+'|'+(e.nuevaClausula||0);
       D.eventos=D.eventos||{};
       var repetido=!!D.eventos[clave];
-      if(obj&&!repetido){
+      if(obj){
         var regD=registrar(e.nombre,{});
         var valorHoy=(regD&&regD.valor)?regD.valor:(obj.valor||0);
-        if(e.nuevaClausula){
-          var anclaje={c:e.nuevaClausula,v:valorHoy};
+        if(e.nuevaClausula&&(!repetido||!obj.clAnuncio)){
+          /* Se ancla la cláusula anunciada al valor de ese momento. Si el
+             anuncio ya se procesó y el anclaje sigue puesto, no se toca: así
+             no se pierde la evolución acumulada desde entonces. Y si falta
+             (datos de una versión anterior), se restaura. */
+          var vRef=valorHoy;
+          if(e.fecha&&regD&&regD.vhist&&regD.vhist.length){
+            for(var q=0;q<regD.vhist.length;q++){
+              if(regD.vhist[q].f>=e.fecha){vRef=regD.vhist[q].v;break;}
+            }
+          }
+          var anclaje={c:e.nuevaClausula,v:vRef};
           obj.clAnuncio=anclaje;
           if(regD)regD.clAnuncio=anclaje;
-        }else if(e.deposito){
-          /* Sin cláusula anunciada: el depósito se suma a la que tuviera */
+          if(!repetido)blindajes++;
+        }else if(e.deposito&&!repetido){
+          /* Un depósito suelto sí se acumula, así que solo una vez */
           var previa=clausulaDe(obj);
           var anclaje2={c:previa+Math.round(e.deposito*FACTOR),v:valorHoy};
           obj.clAnuncio=anclaje2;
           if(regD)regD.clAnuncio=anclaje2;
+          blindajes++;
         }
         D.eventos[clave]=hoy();
-        blindajes++;
       }
       detalle.push({t:'deposito',n:e.nombre,de:e.equipo||antes,a:null,
                     p:e.nuevaClausula||e.deposito,repetido:repetido});
@@ -2107,7 +2125,8 @@ function pintarLiga(){
   equipos.push({id:'__mio__',nombre:miNombre,mio:true,
     jugadores:D.plantilla.map(function(p){
       return {nombre:p.nombre,pos:p.pos,pos2:p.pos2,valor:p.valor,
-              pagado:p.compra,puntos:p.puntos,deposito:p.deposito||0};
+              pagado:p.compra,puntos:p.puntos,deposito:p.deposito||0,
+              clAnuncio:p.clAnuncio,desde:p.fFichaje};
     })});
 
   if(equipos.length===1&&!D.plantilla.length){
@@ -2273,7 +2292,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V46 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V47 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   var protegidos=D.plantilla.filter(function(p){return p.fFichaje&&diasParaClausular({desde:p.fFichaje})>0;});
   if(protegidos.length){
