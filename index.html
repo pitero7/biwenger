@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B1220">
-<title>Cuaderno de mercado · Biwenger V45</title>
+<title>Cuaderno de mercado · Biwenger V46</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -184,7 +184,7 @@ details > *:first-child + *{margin-top:12px}
 <body>
 
 <header>
-  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V45</span></div>
+  <div class="brand"><h1>Cuaderno de mercado</h1><span id="jorLabel" onclick="cambiarJornada()" style="cursor:pointer" title="Tocar para cambiar de jornada">J1</span><span class="ver">V46</span></div>
   <div class="till">
     <div>
       <label>Saldo</label>
@@ -974,6 +974,7 @@ function registrar(nombre,datos,semilla){
   if(datos.equipo)j.equipo=datos.equipo;
   if(datos.media!==undefined)j.media=datos.media;
   if(datos.deposito!==undefined&&(!semilla||!j.deposito))j.deposito=datos.deposito;
+  if(datos.clAnuncio&&(!semilla||!j.clAnuncio))j.clAnuncio=datos.clAnuncio;
   if(datos.pj!==undefined)j.pj=datos.pj;
   if(datos.duenoTipo){j.duenoTipo=datos.duenoTipo;j.dueno=datos.dueno||'';}
   /* El diccionario de posiciones manda siempre */
@@ -1099,7 +1100,9 @@ function puntosTxt(p){
 }
 /* Cláusula de cualquier jugador: 1,5 x lo mayor entre valor y lo pagado */
 function clausulaJugador(j){
-  return Math.round((Math.max(j.valor||0,j.pagado||0)+(j.deposito||0))*FACTOR);
+  var a=j.clAnuncio;
+  if(a&&a.c)return Math.round(a.c+((j.valor||0)-(a.v||0))*FACTOR);
+  return Math.round(Math.max(j.valor||0,j.pagado||0)*FACTOR);
 }
 /* Recalcula dueños a partir de mi plantilla y de las plantillas rivales */
 /* Baja a cada plantilla lo que manda el registro. Los atributos del jugador
@@ -1115,6 +1118,8 @@ function bajarDelRegistro(){
     if(j.pos)p.pos=j.pos;
     p.pos2=j.pos2||'';
     p.deposito=j.deposito||0;
+    if(j.clAnuncio)p.clAnuncio=j.clAnuncio;
+    else delete p.clAnuncio;
     if(j.equipo)p.equipo=j.equipo;
   }
   D.plantilla.forEach(aplicar);
@@ -1131,12 +1136,13 @@ function sincronizarJugadores(){
   D.plantilla.forEach(function(p){
     registrar(p.nombre,{pagado:p.compra,duenoTipo:'mio',dueno:D.miEquipo||'Mi equipo',
       valor:p.valor,puntos:p.puntos,pos:p.pos,pos2:p.pos2,equipo:p.equipo,
-      deposito:p.deposito},true);
+      deposito:p.deposito,clAnuncio:p.clAnuncio},true);
   });
   (D.rivales||[]).forEach(function(r){
     r.jugadores.forEach(function(p){
       registrar(p.nombre,{pagado:p.pagado,duenoTipo:'rival',dueno:r.nombre,
-        valor:p.valor,puntos:p.puntos,pos:p.pos,pos2:p.pos2,deposito:p.deposito},true);
+        valor:p.valor,puntos:p.puntos,pos:p.pos,pos2:p.pos2,deposito:p.deposito,
+      clAnuncio:p.clAnuncio},true);
     });
   });
   (D.mercado||[]).forEach(function(m){
@@ -1316,13 +1322,30 @@ function inmunidadTxt(j){
 }
 /* La cláusula es 1,5 x la base, y la base es el valor de mercado salvo que
    el dueño pagara más: entonces manda lo que pagó. */
+/* Cláusula sin blindar: 1,5 x lo mayor entre el valor de mercado y lo que
+   pagó su dueño. */
 function baseDe(j){
-  /* El dueño puede depositar dinero para blindar al jugador: ese depósito
-     se suma a la base y por tanto también se multiplica por 1,5. */
-  return Math.max(j.valor||0,j.pagado||0)+(j.deposito||0);
+  return Math.max(j.valor||0,j.pagado||0);
 }
-function clausulaDe(j){
+function clausulaSinBlindar(j){
   return Math.round(baseDe(j)*FACTOR);
+}
+/* Cláusula real. Si el tablón anunció una cláusula concreta tras un depósito,
+   esa cifra manda: se guarda junto al valor que el jugador tenía ese día, y a
+   partir de ahí evoluciona con los cambios de valor. Así coincide siempre con
+   lo que muestra Biwenger, en vez de deducir un depósito y recomponerlo. */
+function clausulaDe(j){
+  var a=j.clAnuncio;
+  if(a&&a.c){
+    var deriva=((j.valor||0)-(a.v||0))*FACTOR;
+    return Math.round(a.c+deriva);
+  }
+  return clausulaSinBlindar(j);
+}
+/* Cuánto blindaje hay por encima de la cláusula que le tocaría */
+function blindajeDe(j){
+  var extra=clausulaDe(j)-clausulaSinBlindar(j);
+  return extra>0?extra:0;
 }
 /* Cuánto pagó de más el dueño sobre el valor actual */
 function sobrepago(j){
@@ -1493,7 +1516,7 @@ function duenoActual(nombre){
 function quitarDeTodos(nombre){
   /* Al cambiar de manos, el blindaje del dueño anterior desaparece */
   var reg=(D.jugadores||{})[normalizar(nombre)];
-  if(reg)reg.deposito=0;
+  if(reg){reg.deposito=0;delete reg.clAnuncio;}
   var n=0;
   (D.rivales||[]).forEach(function(r){
     var antes=r.jugadores.length;
@@ -1582,22 +1605,26 @@ function importarActividad(){
       D.plantilla.forEach(function(p){if(normalizar(p.nombre)===normalizar(e.nombre))obj=p;});
       (D.rivales||[]).forEach(function(r2){r2.jugadores.forEach(function(p){
         if(normalizar(p.nombre)===normalizar(e.nombre))obj=p;});});
-      /* El depósito es una cantidad que SE SUMA al blindaje, no una cláusula
-         final: si el jugador sube de valor después, el blindaje sigue intacto
-         encima. Y como el mismo anuncio reaparece en el tablón durante días,
-         cada uno se procesa una sola vez. */
+      /* Se guarda la cláusula anunciada tal cual, junto al valor que el
+         jugador tenía ese día. A partir de ahí evoluciona con el valor, sin
+         necesidad de deducir ningún depósito. El mismo anuncio reaparece en
+         el tablón durante días, así que se procesa una sola vez. */
       var clave='dep|'+normalizar(e.nombre)+'|'+(e.deposito||0)+'|'+(e.nuevaClausula||0);
       D.eventos=D.eventos||{};
       var repetido=!!D.eventos[clave];
       if(obj&&!repetido){
         var regD=registrar(e.nombre,{});
-        var baseSD=Math.max(obj.valor||0,obj.pagado||obj.compra||0);
-        var nuevoDep;
-        if(e.deposito) nuevoDep=((regD&&regD.deposito)||0)+e.deposito;
-        else if(e.nuevaClausula) nuevoDep=Math.max(0,Math.round(e.nuevaClausula/FACTOR)-baseSD);
-        if(nuevoDep!==undefined){
-          if(regD)regD.deposito=nuevoDep;
-          obj.deposito=nuevoDep;
+        var valorHoy=(regD&&regD.valor)?regD.valor:(obj.valor||0);
+        if(e.nuevaClausula){
+          var anclaje={c:e.nuevaClausula,v:valorHoy};
+          obj.clAnuncio=anclaje;
+          if(regD)regD.clAnuncio=anclaje;
+        }else if(e.deposito){
+          /* Sin cláusula anunciada: el depósito se suma a la que tuviera */
+          var previa=clausulaDe(obj);
+          var anclaje2={c:previa+Math.round(e.deposito*FACTOR),v:valorHoy};
+          obj.clAnuncio=anclaje2;
+          if(regD)regD.clAnuncio=anclaje2;
         }
         D.eventos[clave]=hoy();
         blindajes++;
@@ -1852,22 +1879,25 @@ function editarClausula(rid,nombre){
   if(!r)return;
   var j=r.jugadores.find(function(p){return normalizar(p.nombre)===normalizar(nombre);});
   if(!j)return;
-  var base=Math.max(j.valor||0,j.pagado||0);
   var v=prompt('Cláusula de '+j.nombre+' según Biwenger.\n'+
-               'Sin blindaje serían '+eur(Math.round(base*FACTOR))+'.\n'+
-               'Escríbela corta: 5,5 son 5,5M',
+               'Sin blindaje serían '+eur(clausulaSinBlindar(j))+'.\n'+
+               'Escríbela corta: 5,5 son 5,5M. Vacío para quitar el blindaje.',
                (clausulaDe(j)/1e6).toFixed(2).replace('.',','));
   if(v===null)return;
   var cl=num(v);
-  if(!cl){j.deposito=0;}
-  else{
-    var dep=Math.round(cl/FACTOR)-base;
-    j.deposito=Math.max(0,dep);
-  }
   var reg=registrar(j.nombre,{});
-  if(reg)reg.deposito=j.deposito;
+  if(!cl){
+    delete j.clAnuncio;j.deposito=0;
+    if(reg){delete reg.clAnuncio;reg.deposito=0;}
+    guardar();pintar();aviso('Blindaje quitado');
+    return;
+  }
+  /* Se ancla la cláusula al valor de hoy, igual que hace el tablón */
+  var anclaje={c:cl,v:j.valor||0};
+  j.clAnuncio=anclaje;
+  if(reg)reg.clAnuncio=anclaje;
   guardar();pintar();
-  aviso(j.deposito?'Blindado con '+eur(j.deposito):'Blindaje quitado');
+  aviso('Cláusula fijada en '+eur(cl));
 }
 /* Lee la clasificación tal cual se copia: la posición, el nombre y los puntos
    pueden venir en la misma línea o en líneas seguidas. */
@@ -2126,7 +2156,7 @@ function pintarLiga(){
       var sp=sobrepago(j);
       return '<div class="chg">'+posHTML(j)+
         '<div class="who"><b>'+esc(j.nombre)+'</b><small class="muted mono">'+eur(j.valor)+
-        ' · cl '+eur(clausulaDe(j))+(j.deposito?' <span class="up">blindado</span>':'')+
+        ' · cl '+eur(clausulaDe(j))+(blindajeDe(j)?' <span class="up">blindado</span>':'')+
         (sp?' <span class="down">(+'+eur(sp)+' de más)</span>':'')+' · '+puntosTxt(j.puntos)+
         (function(){
           var d=diasParaClausular(j);
@@ -2243,7 +2273,7 @@ function construirInforme(){
   var plus=valEq-invertido;
   var benef=D.movimientos.reduce(function(a,m){return a+m.benef},0);
   var L=[];
-  L.push('INFORME BIWENGER V45 · '+hoy()+' · Jornada '+D.jornada);
+  L.push('INFORME BIWENGER V46 · '+hoy()+' · Jornada '+D.jornada);
   L.push('Saldo '+eur(D.saldo)+' | Valor equipo '+eur(valEq)+' | Poder de compra '+eur(D.saldo+valEq));
   var protegidos=D.plantilla.filter(function(p){return p.fFichaje&&diasParaClausular({desde:p.fFichaje})>0;});
   if(protegidos.length){
